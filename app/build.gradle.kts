@@ -14,8 +14,8 @@ android {
         targetSdk = 36
         // versionCode: +1 на каждую загрузку в Play (монотонный счётчик);
         // versionName — человекочитаемый тег релиза, поднимать вместе с ним
-        versionCode = 14
-        versionName = "2.0.0"
+        versionCode = 15
+        versionName = "2.0.1"
     }
 
     // upload-ключ для Play App Signing; креды — SAYWHEN_* в ~/.gradle/gradle.properties

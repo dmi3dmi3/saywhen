@@ -1,0 +1,6 @@
+First F-Droid release.
+
+• Phrases in English and Russian: dates, times, durations, recurrence (RRULE)
+• Live preview with tap-to-exclude words
+• Home-screen widget, themes, TalkBack support
+• No network, no analytics — events go only to your calendar
