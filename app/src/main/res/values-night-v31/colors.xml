@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ночь: тёмный контейнер + светлый плюс (primary30 / primary90, как M3) -->
+<resources>
+    <color name="widget_background">@android:color/system_accent1_700</color>
+    <color name="widget_on_background">@android:color/system_accent1_100</color>
+</resources>

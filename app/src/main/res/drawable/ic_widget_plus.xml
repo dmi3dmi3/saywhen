@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- плюс вектором: у текстового глифа кривой оптический центр (19d) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path
+        android:fillColor="@color/widget_on_background"
+        android:pathData="M11,4h2v7h7v2h-7v7h-2v-7H4v-2h7z" />
+</vector>

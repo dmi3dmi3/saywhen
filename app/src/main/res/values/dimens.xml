@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- фолбэк до Android 12; на 31+ — системный радиус виджетов -->
+    <dimen name="widget_corner_radius">20dp</dimen>
+</resources>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- иконка: «бумага и чернила» (19c) — бренд-цвета нет осознанно, design.md -->
+    <color name="ic_launcher_background">#F7F3EA</color>
+
+    <!-- виджет (19d): контейнерная плитка — до Android 12 «бумага» с
+         чернильным плюсом (в пару к иконке); на 31+ перекрывается системной
+         палитрой (values-v31 / night-v31) -->
+    <color name="widget_background">#F7F3EA</color>
+    <color name="widget_on_background">#2C2C2A</color>
+</resources>

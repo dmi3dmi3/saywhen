@@ -1,0 +1,202 @@
+package com.dmi3dmi3.saywhen.parser.ru
+
+import com.dmi3dmi3.saywhen.parser.Confidence
+import com.dmi3dmi3.saywhen.parser.RecurrenceCandidate
+import com.dmi3dmi3.saywhen.parser.Token
+import com.dmi3dmi3.saywhen.parser.weeklyRecurrence
+import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.Period
+import java.time.temporal.TemporalAdjusters
+
+internal object RecurrenceRules {
+
+    private val every = setOf("каждый", "каждая", "каждую", "каждое", "каждые")
+
+    private val unitFreq = mapOf(
+        "день" to "DAILY", "дня" to "DAILY", "дней" to "DAILY",
+        "неделю" to "WEEKLY", "недели" to "WEEKLY", "недель" to "WEEKLY",
+        "месяц" to "MONTHLY", "месяца" to "MONTHLY", "месяцев" to "MONTHLY",
+        "год" to "YEARLY", "года" to "YEARLY", "лет" to "YEARLY",
+    )
+
+    // «по …» — дательный множественный
+    private val poDays: Map<String, Set<DayOfWeek>> = mapOf(
+        "будням" to setOf(
+            DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY,
+            DayOfWeek.THURSDAY, DayOfWeek.FRIDAY,
+        ),
+        "выходным" to setOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY),
+        "понедельникам" to setOf(DayOfWeek.MONDAY),
+        "вторникам" to setOf(DayOfWeek.TUESDAY),
+        "средам" to setOf(DayOfWeek.WEDNESDAY),
+        "четвергам" to setOf(DayOfWeek.THURSDAY),
+        "пятницам" to setOf(DayOfWeek.FRIDAY),
+        "субботам" to setOf(DayOfWeek.SATURDAY),
+        "воскресеньям" to setOf(DayOfWeek.SUNDAY),
+    )
+
+    /** Первый матч по свободным токенам + хвост конца повтора; used не трогает. */
+    fun find(tokens: List<Token>, today: LocalDate, used: BooleanArray): RecurrenceCandidate? {
+        for (i in tokens.indices) {
+            if (used[i]) continue
+            matchAt(tokens, i, used)?.let { return withEnd(tokens, today, used, it) }
+        }
+        return null
+    }
+
+    /**
+     * Конец повтора среди свободных токенов: «до конца недели/месяца/года»,
+     * «до конца августа», «до 15 сентября», «10 раз». Ищется только при уже
+     * найденном повторе — без него эти слова остаются обычным текстом.
+     */
+    private fun withEnd(
+        tokens: List<Token>,
+        today: LocalDate,
+        used: BooleanArray,
+        main: RecurrenceCandidate,
+    ): RecurrenceCandidate {
+        fun busy(j: Int) = j !in tokens.indices || used[j] || j in main.tokens
+        for (i in tokens.indices) {
+            if (busy(i)) continue
+            val t = tokens[i].lower
+
+            // «10 раз»
+            val n = t.toIntOrNull()
+            if (n != null && n in 1..999 && !busy(i + 1) &&
+                tokens[i + 1].lower in setOf("раз", "раза")
+            ) {
+                return main.copy(count = n, extraTokens = listOf(i..i + 1))
+            }
+
+            if (t != "до" || busy(i + 1)) continue
+            val second = tokens[i + 1].lower
+
+            // «до конца недели/месяца/года/<месяца-род>»
+            if (second == "конца" && !busy(i + 2)) {
+                val date = endOf(tokens[i + 2].lower, today) ?: continue
+                return main.copy(untilDate = date, extraTokens = listOf(i..i + 2))
+            }
+
+            // «до 15 сентября»; прошло → следующий год
+            val day = second.toIntOrNull()
+            if (day != null && day in 1..31 && !busy(i + 2)) {
+                val month = DateRules.months[tokens[i + 2].lower] ?: continue
+                val date = DateRules.dateOrNull(today.year, month, day)?.takeIf { !it.isBefore(today) }
+                    ?: DateRules.dateOrNull(today.year + 1, month, day) ?: continue
+                return main.copy(untilDate = date, extraTokens = listOf(i..i + 2))
+            }
+
+            // «до сентября» — канун первого числа: серия до наступления месяца
+            DateRules.months[second]?.let { month ->
+                var firstOfMonth = LocalDate.of(today.year, month, 1)
+                if (!firstOfMonth.isAfter(today)) firstOfMonth = firstOfMonth.plusYears(1)
+                return main.copy(untilDate = firstOfMonth.minusDays(1), extraTokens = listOf(i..i + 1))
+            }
+        }
+        return main
+    }
+
+    private fun endOf(word: String, today: LocalDate): LocalDate? = when (word) {
+        "недели" -> today.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY))
+        "месяца" -> today.withDayOfMonth(today.lengthOfMonth())
+        "года" -> LocalDate.of(today.year, 12, 31)
+        else -> DateRules.months[word]?.let { m ->
+            val thisYear = LocalDate.of(today.year, m, 1).with(TemporalAdjusters.lastDayOfMonth())
+            if (thisYear.isBefore(today)) thisYear.plusYears(1).with(TemporalAdjusters.lastDayOfMonth())
+            else thisYear
+        }
+    }
+
+    private fun matchAt(tokens: List<Token>, i: Int, used: BooleanArray): RecurrenceCandidate? {
+        val t = tokens[i].lower
+
+        // «по будням» / «по выходным» / «по вторникам [и четвергам …]»
+        if (t == "по" && free(used, i..i + 1, tokens.size)) {
+            poDays[tokens.getOrNull(i + 1)?.lower]?.let { first ->
+                val days = first.toMutableSet()
+                val end = consumeDays(tokens, i + 2, used, days) { poDays[it] }
+                return weeklyRecurrence(days, i until end)
+            }
+        }
+
+        if (t !in every) return null
+        val next = tokens.getOrNull(i + 1)?.lower ?: return null
+
+        // «каждый вторник [среду и пятницу …]»
+        DateRules.weekdays[next]?.let { first ->
+            if (free(used, i..i + 1, tokens.size)) {
+                val days = mutableSetOf(first)
+                val end = consumeDays(tokens, i + 2, used, days) { w ->
+                    DateRules.weekdays[w]?.let(::setOf)
+                }
+                return weeklyRecurrence(days, i until end)
+            }
+        }
+
+        // «каждый день/неделю/месяц/год»
+        unitFreq[next]?.let {
+            if (free(used, i..i + 1, tokens.size)) {
+                return RecurrenceCandidate("FREQ=$it", i..i + 1, period = periodOf(it, 1))
+            }
+        }
+
+        val n = next.toIntOrNull() ?: return null
+        val third = tokens.getOrNull(i + 2)?.lower
+
+        // «каждое 15 число»
+        if (third in setOf("число", "числа") && n in 1..31 && free(used, i..i + 2, tokens.size)) {
+            return RecurrenceCandidate(
+                "FREQ=MONTHLY;BYMONTHDAY=$n", i..i + 2,
+                period = Period.ofMonths(1), anchorMonthDay = n,
+            )
+        }
+
+        // «каждые 2 недели»; INTERVAL=1 не пишем — это дефолт RFC 5545
+        val freq = unitFreq[third]
+        if (freq != null && n in 1..99 && free(used, i..i + 2, tokens.size)) {
+            val rrule = if (n > 1) "FREQ=$freq;INTERVAL=$n" else "FREQ=$freq"
+            return RecurrenceCandidate(rrule, i..i + 2, period = periodOf(freq, n))
+        }
+
+        // «каждое 26» — эллипсис «каждого 26-го числа»; строго средний род:
+        // «каждые 3 занятия» месячным повтором стать не должно
+        if (t == "каждое" && n in 1..31 && free(used, i..i + 1, tokens.size)) {
+            return RecurrenceCandidate(
+                "FREQ=MONTHLY;BYMONTHDAY=$n", i..i + 1,
+                period = Period.ofMonths(1), anchorMonthDay = n,
+            )
+        }
+
+        return null
+    }
+
+    /** Хвост списка дней `[и] <день>`… начиная с start; возвращает индекс за последним съеденным. */
+    private fun consumeDays(
+        tokens: List<Token>,
+        start: Int,
+        used: BooleanArray,
+        days: MutableSet<DayOfWeek>,
+        lookup: (String) -> Set<DayOfWeek>?,
+    ): Int {
+        var j = start
+        while (true) {
+            val k = if (tokens.getOrNull(j)?.lower == "и") j + 1 else j
+            val word = tokens.getOrNull(k)?.lower ?: break
+            if ((j..k).any { used[it] }) break
+            days += lookup(word) ?: break
+            j = k + 1
+        }
+        return j
+    }
+
+    private fun periodOf(freq: String, n: Int): Period = when (freq) {
+        "DAILY" -> Period.ofDays(n)
+        "WEEKLY" -> Period.ofWeeks(n)
+        "MONTHLY" -> Period.ofMonths(n)
+        else -> Period.ofYears(n)
+    }
+
+    private fun free(used: BooleanArray, range: IntRange, size: Int): Boolean =
+        range.last < size && range.all { !used[it] }
+}

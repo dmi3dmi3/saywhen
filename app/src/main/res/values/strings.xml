@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Дефолтная локаль — en (fallback для всех), русский — в values-ru/ (задачи 14 и 17). -->
+    <string name="app_name" translatable="false">SayWhen</string>
+
+    <!-- Виджет -->
+    <string name="widget_label">+ event</string>
+    <string name="widget_description">Quick event from text</string>
+
+    <!-- Окно быстрого ввода -->
+    <string name="quickadd_placeholder">Event title</string>
+    <string name="quickadd_create">Create</string>
+    <string name="quickadd_created">Created ✓ %1$s</string>
+    <string name="quickadd_undo">Undo</string>
+    <string name="error_no_calendar">No calendar found — is an account set up?</string>
+    <string name="error_insert_failed">Couldn\'t create the event</string>
+    <string name="error_no_permission">Calendar access is needed to create events</string>
+
+    <!-- Строка-итог превью; date_locale и паттерны — у каждой локали свои -->
+    <string name="summary_all_day">all day</string>
+    <string name="summary_today">today</string>
+    <string name="summary_tomorrow">tomorrow</string>
+    <string name="date_locale">en</string>
+    <string name="summary_date_pattern">EEE, MMM d</string>
+    <string name="summary_time_pattern">h:mm a</string>
+
+    <!-- Главный экран: hero и действия (задача 18) -->
+    <string name="hero_slogan">No forms, no fields. Just say when.</string>
+    <string name="hero_description">One phrase — and it\'s on your calendar.</string>
+    <string name="example_phrase_1">Gym every tuesday and friday at 9</string>
+    <string name="example_phrase_2">Movie tomorrow at 11 for an hour and a half</string>
+    <string name="action_add_widget">Add widget</string>
+    <string name="action_try">Try it</string>
+    <string name="action_grant">Allow</string>
+    <string name="action_app_settings">App settings</string>
+    <string name="action_add_account">Add account</string>
+    <string name="settings_no_calendars">No calendars found — add a calendar account</string>
+
+    <!-- Настройки -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_calendar">Calendar</string>
+    <string name="settings_calendar_auto">Automatic (primary)</string>
+    <string name="settings_calendar_permission">Grant calendar access to pick a specific one</string>
+    <string name="settings_duration">Default duration</string>
+    <string name="settings_behavior">Behavior</string>
+    <string name="setting_nod">Tab nod on create</string>
+    <string name="setting_haptic">Vibrate on create</string>
+    <!-- onClickLabel для TalkBack: «Double-tap to …» -->
+    <string name="action_close">close</string>
+    <string name="action_open_settings">open settings</string>
+    <string name="action_open_event">open in calendar</string>
+
+    <!-- подвал About (задача 21) -->
+    <string name="about_source">Source code</string>
+    <string name="about_issues">Report a problem</string>
+    <string name="about_license">License GPL-3.0</string>
+    <string name="about_privacy">Events go to your calendar — nowhere else.</string>
+    <string name="about_privacy_details">privacy details</string>
+    <string name="about_copy_version">copy version</string>
+    <string name="settings_theme">Theme</string>
+    <string name="theme_system">System</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="settings_language">Language</string>
+    <string name="language_system">System</string>
+    <string name="language_russian" translatable="false">Русский</string>
+    <string name="language_english" translatable="false">English</string>
+    <string name="unit_hours">h</string>
+    <string name="unit_minutes">min</string>
+</resources>

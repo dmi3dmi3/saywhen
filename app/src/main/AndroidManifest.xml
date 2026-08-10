@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <uses-permission android:name="android.permission.WRITE_CALENDAR" />
+
+    <application
+        android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:theme="@style/Theme.SayWhen">
+
+        <!-- persist выбора языка на API < 33 (autoStoreLocales) -->
+        <service
+            android:name="androidx.appcompat.app.AppLocalesMetadataHolderService"
+            android:enabled="false"
+            android:exported="false">
+            <meta-data
+                android:name="autoStoreLocales"
+                android:value="true" />
+        </service>
+        <!-- configChanges="locale|layoutDirection": на Android 13+ смена языка
+             не пересоздаёт активити — Compose пересоставляет строки на месте
+             (плавно, без мигания); до 13 — штатная рекреация -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:configChanges="locale|layoutDirection">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <!-- taskAffinity="" — своя задача: тап по виджету не поднимает
+             MainActivity, под полупрозрачным окном остаётся лаунчер -->
+        <activity
+            android:name=".quickadd.QuickAddActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:configChanges="locale|layoutDirection"
+            android:theme="@style/Theme.SayWhen.Dialog"
+            android:windowSoftInputMode="adjustResize" />
+        <receiver
+            android:name=".widget.SayWhenWidgetProvider"
+            android:exported="false"
+            android:label="@string/widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info" />
+        </receiver>
+    </application>
+</manifest>
