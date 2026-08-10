@@ -18,7 +18,7 @@ at all: the app doesn't even declare the `INTERNET` permission.
 
 | Input window | Settings | Widget |
 |---|---|---|
-| ![Input window with a parsed phrase](assets/input.png) | ![Settings](assets/settings.png) | ![Home-screen widget](assets/widget.png) |
+| ![Input window with a parsed phrase](fastlane/metadata/android/en-US/images/phoneScreenshots/1.png) | ![Settings](fastlane/metadata/android/en-US/images/phoneScreenshots/2.png) | ![Home-screen widget](fastlane/metadata/android/en-US/images/phoneScreenshots/3.png) |
 
 ## Install
 
