@@ -277,14 +277,18 @@ fun QuickAddScreen(onClose: () -> Unit, prefill: String? = null) {
                 created?.let { done ->
                     try {
                         context.startActivity(
-                            Intent(
-                                Intent.ACTION_VIEW,
+                            // MIME явно: без него системе нужен getType() провайдера,
+                            // невидимого без <queries> (Android 11+), и резолв уходит
+                            // мимо календаря (ревью F-Droid)
+                            Intent(Intent.ACTION_VIEW).setDataAndType(
                                 ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, done.id),
+                                // у CalendarContract.Events нет константы item-типа
+                                "vnd.android.cursor.item/event",
                             ),
                         )
                         onClose()
                     } catch (_: ActivityNotFoundException) {
-                        // календарного приложения нет — событие всё равно создано
+                        error = context.getString(R.string.error_no_calendar_app) to null
                     }
                 }
             },
@@ -561,10 +565,9 @@ private fun Tray(
                                     // появление «создано» озвучивается само — весь
                                     // остальной фидбек (кивок, вибрация) невербальный
                                     .semantics { liveRegion = LiveRegionMode.Polite }
-                                    // тап — открыть событие в календаре; «Отменить» — отдельная цель
+                                    // тап — открыть событие в календаре; «Отменить» — отдельная
+                                    // цель; рипл оставлен — единственный мгновенный отклик тапа
                                     .clickable(
-                                        remember { MutableInteractionSource() },
-                                        indication = null,
                                         onClickLabel = stringResource(R.string.action_open_event),
                                         role = Role.Button,
                                         onClick = onOpenCreated,

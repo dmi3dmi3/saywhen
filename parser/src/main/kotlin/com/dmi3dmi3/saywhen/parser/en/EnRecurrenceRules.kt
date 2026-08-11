@@ -1,7 +1,9 @@
 package com.dmi3dmi3.saywhen.parser.en
 
+import com.dmi3dmi3.saywhen.parser.DayHalf
 import com.dmi3dmi3.saywhen.parser.RecurrenceCandidate
 import com.dmi3dmi3.saywhen.parser.Token
+import com.dmi3dmi3.saywhen.parser.ordinalMonthlyRecurrence
 import com.dmi3dmi3.saywhen.parser.weeklyRecurrence
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -19,6 +21,20 @@ internal object EnRecurrenceRules {
 
     private val singleFreq = mapOf(
         "daily" to "DAILY", "weekly" to "WEEKLY", "monthly" to "MONTHLY", "yearly" to "YEARLY",
+        "annually" to "YEARLY",
+        // разговорное «everyday» вместо «every day» (живой кейс из ревью F-Droid)
+        "everyday" to "DAILY",
+    )
+
+    // "every morning/evening/night" — ежедневный повтор + половина суток для часа
+    private val dayHalves = mapOf(
+        "morning" to DayHalf.MORNING, "evening" to DayHalf.EVENING, "night" to DayHalf.EVENING,
+    )
+
+    // "every first monday of the month" — порядковые; -1 — последний
+    private val ordinals = mapOf(
+        "first" to 1, "1st" to 1, "second" to 2, "2nd" to 2, "third" to 3, "3rd" to 3,
+        "fourth" to 4, "4th" to 4, "fifth" to 5, "5th" to 5, "last" to -1,
     )
 
     private val onDays: Map<String, Set<DayOfWeek>> = mapOf(
@@ -54,7 +70,7 @@ internal object EnRecurrenceRules {
             return RecurrenceCandidate("FREQ=$it", i..i, period = periodOf(it, 1))
         }
 
-        if (t != "every") return null
+        if (t != "every" && t != "each") return null
         val next = tokens.getOrNull(i + 1)?.lower ?: return null
 
         // "every tuesday [and thursday …]"
@@ -63,6 +79,48 @@ internal object EnRecurrenceRules {
                 val days = mutableSetOf(first)
                 val end = consumeDays(tokens, i + 2, used, days)
                 return weeklyRecurrence(days, i until end)
+            }
+        }
+
+        // "every second sunday of the month" — раньше "every 15th": иначе "2nd"
+        // съелся бы числом месяца. "of the month" обязателен: голое "every
+        // second tuesday" двусмысленно (раз в две недели vs день месяца)
+        ordinals[next]?.let { ord ->
+            EnDateRules.weekdays[tokens.getOrNull(i + 2)?.lower]?.let { dow ->
+                var j = i + 3
+                if (tokens.getOrNull(j)?.lower == "of") {
+                    if (tokens.getOrNull(j + 1)?.lower == "the") j++
+                    if (tokens.getOrNull(j + 1)?.lower == "month" && free(used, i..j + 1, tokens.size)) {
+                        return ordinalMonthlyRecurrence(ord, dow, i..j + 1)
+                    }
+                }
+            }
+        }
+
+        // "every weekday" — будни, как "on weekdays"
+        if (next == "weekday" && free(used, i..i + 1, tokens.size)) {
+            return weeklyRecurrence(onDays.getValue("weekdays"), i..i + 1)
+        }
+
+        // "every morning/evening/night" — ежедневно + половина суток для часа
+        dayHalves[next]?.let { half ->
+            if (free(used, i..i + 1, tokens.size)) {
+                return RecurrenceCandidate("FREQ=DAILY", i..i + 1, period = Period.ofDays(1), dayHalf = half)
+            }
+        }
+
+        // "every other day/week/month/monday" — интервал 2
+        if (next == "other" && free(used, i..i + 2, tokens.size)) {
+            val third = tokens.getOrNull(i + 2)?.lower
+            unitFreq[third]?.let { f ->
+                return RecurrenceCandidate("FREQ=$f;INTERVAL=2", i..i + 2, period = periodOf(f, 2))
+            }
+            EnDateRules.weekdays[third]?.let { dow ->
+                val base = weeklyRecurrence(setOf(dow), i..i + 2)
+                return base.copy(
+                    rrule = base.rrule.replace("FREQ=WEEKLY;", "FREQ=WEEKLY;INTERVAL=2;"),
+                    period = Period.ofWeeks(2),
+                )
             }
         }
 

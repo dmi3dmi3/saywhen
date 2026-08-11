@@ -60,11 +60,15 @@ internal object EventAssembly {
         val baseDate = date?.date ?: now.toLocalDate()
         val startDate = rec?.resolveStartDate(baseDate) ?: baseDate
         val allDay = time == null
+        // половина суток от контекста («tonight», «every morning») снимает пару круга
+        val dayHalf = rec?.dayHalf ?: date?.dayHalf
         var start = when {
             allDay -> startDate.atStartOfDay(now.zone)
+            time!!.twelveHour && dayHalf != null ->
+                startDate.atTime(time.time.withHour(dayHalf.resolve(time.time.hour))).atZone(now.zone)
             // 12-часовой круг: окно активности решает пару, «сейчас» не участвует —
             // прошедшее без явной даты уезжает вперёд общим сдвигом ниже
-            time!!.twelveHour -> TwelveHourClock.resolve(time.time, startDate, now.zone)
+            time.twelveHour -> TwelveHourClock.resolve(time.time, startDate, now.zone)
             else -> startDate.atTime(time.time).atZone(now.zone)
         }
 

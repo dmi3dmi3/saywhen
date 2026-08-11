@@ -1,6 +1,7 @@
 package com.dmi3dmi3.saywhen.parser
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.Duration
@@ -97,6 +98,33 @@ class EnglishTest {
     @Test
     fun `half past — круг от половины`() {
         assertStart("half past six", at(21, 18, 30))
+    }
+
+    @Test
+    fun `quarter past и quarter to — словом и цифрой`() {
+        assertStart("meet at quarter past six", at(21, 18, 15))
+        assertStart("meet at quarter past 6", at(21, 18, 15))
+        assertStart("meet at quarter to six", at(21, 17, 45))
+        assertStart("meet at quarter to 6", at(21, 17, 45))
+        assertStart("quarter to one", at(22, 12, 45))  // от часа — через 12
+    }
+
+    @Test
+    fun `tonight — сегодня и вечерняя половина круга`() {
+        val e = parser.parse("party tonight at 8", now)
+        assertEquals(at(21, 20), e.start)
+        assertEquals("party", e.title)
+        val bare = parser.parse("party tonight", now)
+        assertTrue(bare.allDay)
+        assertEquals(LocalDate.of(2026, 7, 21), bare.start.toLocalDate())
+    }
+
+    @Test
+    fun `day after tomorrow — послезавтра`() {
+        val e = parser.parse("call day after tomorrow at 10", now)
+        assertEquals(at(23, 10), e.start)
+        assertEquals("call", e.title)
+        assertTrue(parser.parse("the day after tomorrow", now).allDay)
     }
 
     @Test
@@ -236,6 +264,104 @@ class EnglishTest {
         assertEquals("FREQ=WEEKLY;BYDAY=SA,SU", parser.parse("brunch on weekends", now).rrule)
         assertEquals("FREQ=MONTHLY", parser.parse("review monthly", now).rrule)
         assertStart("call in a week at 5:30pm", ZonedDateTime.of(2026, 7, 28, 17, 30, 0, 0, now.zone))
+    }
+
+    @Test
+    fun `сокращения длительностей — h-m-hr-min, склейкой и с пробелом`() {
+        fun dur(text: String) = parser.parse(text, now).duration
+        assertEquals(Duration.ofMinutes(45), dur("call at 3 for 45 min"))
+        assertEquals(Duration.ofMinutes(45), dur("call at 3 for 45 mins"))
+        assertEquals(Duration.ofMinutes(45), dur("call at 3 for 45m"))
+        assertEquals(Duration.ofHours(2), dur("call at 3 for 2 hrs"))
+        assertEquals(Duration.ofHours(2), dur("call at 3 for 2 h"))
+        assertEquals(Duration.ofHours(2), dur("call at 3 for 2h"))
+        assertEquals(Duration.ofMinutes(150), dur("call at 3 for 2h 30m"))
+        assertEquals(Duration.ofMinutes(150), dur("call at 3 for 2 hours 30 minutes"))
+    }
+
+    @Test
+    fun `голая склейка длительности — без for, программистская нотация`() {
+        val e = parser.parse("meeting 11:00 2h", now)
+        assertEquals(Duration.ofHours(2), e.duration)
+        assertEquals("meeting", e.title)
+        assertEquals(Duration.ofMinutes(165), parser.parse("meeting at 3 2h45m", now).duration)
+        assertEquals(Duration.ofMinutes(45), parser.parse("standup at 10 45m", now).duration)
+        // голое «2 h» с пробелом — только после for: иначе цифра из заголовка
+        // склеилась бы с случайной буквой
+        assertNull(parser.parse("sprint review 2 h", now).duration)
+    }
+
+    @Test
+    fun `each — синоним every`() {
+        val e = parser.parse("standup each tuesday at 10", now)
+        assertEquals("FREQ=WEEKLY;BYDAY=TU", e.rrule)
+        assertEquals("standup", e.title)
+        assertEquals("FREQ=DAILY", parser.parse("pills each day", now).rrule)
+    }
+
+    @Test
+    fun `annually — синоним yearly`() {
+        assertEquals("FREQ=YEARLY", parser.parse("checkup annually", now).rrule)
+    }
+
+    @Test
+    fun `every weekday — будни`() {
+        val e = parser.parse("gym every weekday at 7", now)
+        assertEquals("FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR", e.rrule)
+        // у «weekday» нет утренней семантики — голый час решает окно, как всюду
+        assertEquals(19, e.start.hour)
+        assertEquals("gym", e.title)
+    }
+
+    @Test
+    fun `every other — интервал 2`() {
+        assertEquals("FREQ=WEEKLY;INTERVAL=2", parser.parse("pay every other week", now).rrule)
+        assertEquals("FREQ=DAILY;INTERVAL=2", parser.parse("water every other day", now).rrule)
+        assertEquals("FREQ=MONTHLY;INTERVAL=2", parser.parse("bill every other month", now).rrule)
+        val e = parser.parse("gym every other monday at 9", now)
+        assertEquals("FREQ=WEEKLY;INTERVAL=2;BYDAY=MO", e.rrule)
+        assertEquals(9, e.start.hour)
+    }
+
+    @Test
+    fun `every morning и every evening — повтор с половиной суток`() {
+        val m = parser.parse("run every morning at 7", now)
+        assertEquals("FREQ=DAILY", m.rrule)
+        assertEquals(7, m.start.hour)
+        val e = parser.parse("walk every evening at 8", now)
+        assertEquals("FREQ=DAILY", e.rrule)
+        assertEquals(20, e.start.hour)
+        val n = parser.parse("pills every night at 10", now)
+        assertEquals("FREQ=DAILY", n.rrule)
+        assertEquals(22, n.start.hour)
+    }
+
+    @Test
+    fun `порядковый день недели месяца — of the month обязателен`() {
+        val e = parser.parse("board every first monday of the month at 10", now)
+        assertEquals("FREQ=MONTHLY;BYDAY=1MO", e.rrule)
+        assertEquals("board", e.title)
+        // старт — ближайший первый понедельник: 3 августа
+        assertEquals(LocalDate.of(2026, 8, 3), e.start.toLocalDate())
+        assertEquals(
+            "FREQ=MONTHLY;BYDAY=2SU",
+            parser.parse("brunch every 2nd sunday of the month", now).rrule,
+        )
+        assertEquals(
+            "FREQ=MONTHLY;BYDAY=-1FR",
+            parser.parse("report every last friday of the month", now).rrule,
+        )
+        // без «of the month» — не месячный повтор (двусмысленно)
+        assertNull(parser.parse("brunch every second sunday", now).rrule)
+    }
+
+    @Test
+    fun `everyday слитно — ежедневный повтор`() {
+        // живой кейс из ревью F-Droid: «everyday» пишут вместо «every day»
+        val e = parser.parse("write to do list everyday at 6 am", now)
+        assertEquals("FREQ=DAILY", e.rrule)
+        assertEquals(6, e.start.hour)
+        assertEquals("write to do list", e.title)
     }
 
     @Test

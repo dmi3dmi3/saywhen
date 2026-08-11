@@ -30,6 +30,25 @@ class DurationRulesTest {
     }
 
     @Test
+    fun `сокращения ч-м — склейкой и с пробелом`() {
+        assertDuration("завтра в 15 на 2ч", Duration.ofHours(2))
+        assertDuration("завтра в 15 на 2 ч", Duration.ofHours(2))
+        assertDuration("в 15 на 45м", Duration.ofMinutes(45))
+        assertDuration("в 15 на 45 м", Duration.ofMinutes(45))
+        assertDuration("в 15 на 2ч 30м", Duration.ofMinutes(150))
+        assertDuration("в 15 на 2 часа 30 минут", Duration.ofMinutes(150))
+    }
+
+    @Test
+    fun `голая склейка длительности — без «на»`() {
+        assertDuration("встреча в 11 2ч", Duration.ofHours(2))
+        assertDuration("встреча в 11 2ч45м", Duration.ofMinutes(165))
+        assertDuration("планёрка в 10 45м", Duration.ofMinutes(45))
+        // голое «2 ч» с пробелом — только после «на»
+        assertNull(parser.parse("ретро спринта 2 ч", now).duration)
+    }
+
+    @Test
     fun `длительность словами`() {
         assertDuration("встреча в 11 на три часа", Duration.ofHours(3))
         assertDuration("в 15 на два часа", Duration.ofHours(2))

@@ -55,6 +55,24 @@ Kotlin + Jetpack Compose, two modules: `:parser` (pure JVM, the phrase
 parser) and `:app` (Android). Without release signing credentials
 `assembleRelease` produces an unsigned APK — that's expected.
 
+## Known limitations
+
+SayWhen writes events through Android's system calendar storage
+(`CalendarContract`), so the target calendar must be registered with the
+system. Apps that keep events in their own isolated storage and don't
+register device calendars — notably **Proton Calendar** (its E2E encryption
+also rules out CalDAV bridges like DAVx5) — cannot be written to by any
+third-party app, SayWhen included. Events you create land in the calendar
+selected in settings (Google, local, etc.) and won't show up in such apps.
+Workaround for Proton: a bridge like
+[Sync Provider for Proton](https://apps.olausson.de/sync_provider_for_proton/),
+then pick its calendar in SayWhen settings.
+
+Also mind sync latency: events created by SayWhen are visible in on-device
+calendar apps immediately, but reach the cloud (web calendar, other devices)
+with your account's regular sync cycle — and events created online take the
+same cycle to appear on the device.
+
 ## License
 
 [GPL-3.0](LICENSE). Depends on AndroidX / Jetpack Compose (Apache-2.0).
@@ -93,6 +111,17 @@ F-Droid — скоро.
 
 **Приватность:** события идут только в ваш календарь — больше никуда.
 Подробности — в [PRIVACY.md](PRIVACY.md).
+
+**Известное ограничение:** SayWhen пишет события через системное календарное
+хранилище Android, поэтому календари, которых нет в системе, недоступны —
+в частности **Proton Calendar** (E2E-шифрование закрывает и путь через
+CalDAV/DAVx5). Событие уйдёт в выбранный в настройках системный календарь и
+в таких приложениях не появится. Обход для Proton — мост
+[Sync Provider for Proton](https://apps.olausson.de/sync_provider_for_proton/)
+и его календарь в настройках SayWhen. И про задержку синка: созданное в
+SayWhen событие видно календарным приложениям устройства сразу, а в облако
+(веб-календарь, другие устройства) уезжает штатным циклом синхронизации
+аккаунта; созданное онлайн — тем же циклом доезжает до устройства.
 
 **Зеркало:** разработка идёт в приватном репозитории, сюда попадает срез
 исходников на каждый релиз. Патчи не принимаются (PR будут закрыты); баги и

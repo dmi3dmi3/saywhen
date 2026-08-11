@@ -3,6 +3,7 @@ package com.dmi3dmi3.saywhen.parser.ru
 import com.dmi3dmi3.saywhen.parser.Confidence
 import com.dmi3dmi3.saywhen.parser.RecurrenceCandidate
 import com.dmi3dmi3.saywhen.parser.Token
+import com.dmi3dmi3.saywhen.parser.ordinalMonthlyRecurrence
 import com.dmi3dmi3.saywhen.parser.weeklyRecurrence
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -12,6 +13,16 @@ import java.time.temporal.TemporalAdjusters
 internal object RecurrenceRules {
 
     private val every = setOf("каждый", "каждая", "каждую", "каждое", "каждые")
+
+    // «каждый первый/второй… <день недели> месяца»; -1 — последний
+    private val ordinals = mapOf(
+        "первый" to 1, "первую" to 1, "первое" to 1,
+        "второй" to 2, "вторую" to 2, "второе" to 2,
+        "третий" to 3, "третью" to 3, "третье" to 3,
+        "четвертый" to 4, "четвёртый" to 4, "четвертую" to 4, "четвёртую" to 4,
+        "четвертое" to 4, "четвёртое" to 4,
+        "последний" to -1, "последнюю" to -1, "последнее" to -1,
+    )
 
     private val unitFreq = mapOf(
         "день" to "DAILY", "дня" to "DAILY", "дней" to "DAILY",
@@ -122,6 +133,17 @@ internal object RecurrenceRules {
 
         if (t !in every) return null
         val next = tokens.getOrNull(i + 1)?.lower ?: return null
+
+        // «каждое второе воскресенье месяца» — порядковый день недели; слово
+        // «месяца» обязательно: голое «каждый второй вторник» в живой речи
+        // значит «раз в две недели», угадывать не берёмся
+        ordinals[next]?.let { ord ->
+            DateRules.weekdays[tokens.getOrNull(i + 2)?.lower]?.let { dow ->
+                if (tokens.getOrNull(i + 3)?.lower == "месяца" && free(used, i..i + 3, tokens.size)) {
+                    return ordinalMonthlyRecurrence(ord, dow, i..i + 3)
+                }
+            }
+        }
 
         // «каждый вторник [среду и пятницу …]»
         DateRules.weekdays[next]?.let { first ->

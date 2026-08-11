@@ -12,6 +12,7 @@
     <string name="error_no_calendar">Календарь не найден — есть ли Google-аккаунт?</string>
     <string name="error_insert_failed">Не удалось создать событие</string>
     <string name="error_no_permission">Без доступа к календарю событие не создать</string>
+    <string name="error_no_calendar_app">Открыть нечем: нет календарного приложения — событие сохранено</string>
 
     <!-- Строка-итог превью; date_locale — локаль форматов дат, у каждой локали своя -->
     <string name="summary_all_day">весь день</string>

@@ -1,0 +1,4 @@
+• Больше живых фраз (en): tonight, day after tomorrow, everyday, each tuesday, annually, every weekday, every other week, every morning/evening, quarter past six
+• Порядковые дни месяца: «каждое второе воскресенье месяца» (и en-аналог)
+• Сокращения длительностей: 2ч, 45м, 2ч45м — с «на» и без
+• Исправлено: тап по созданному событию открывает его в календаре

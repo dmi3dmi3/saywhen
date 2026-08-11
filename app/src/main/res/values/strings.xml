@@ -15,6 +15,7 @@
     <string name="error_no_calendar">No calendar found — is an account set up?</string>
     <string name="error_insert_failed">Couldn\'t create the event</string>
     <string name="error_no_permission">Calendar access is needed to create events</string>
+    <string name="error_no_calendar_app">No calendar app to open the event — it\'s saved anyway</string>
 
     <!-- Строка-итог превью; date_locale и паттерны — у каждой локали свои -->
     <string name="summary_all_day">all day</string>

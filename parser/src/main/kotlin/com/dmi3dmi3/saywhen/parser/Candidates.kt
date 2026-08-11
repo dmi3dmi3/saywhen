@@ -27,12 +27,37 @@ internal fun weeklyRecurrence(days: Set<DayOfWeek>, range: IntRange) = Recurrenc
     anchorDays = days,
 )
 
+/**
+ * Месячный повтор по порядковому дню недели: «первый понедельник месяца» →
+ * BYDAY=1MO, «последняя пятница» → BYDAY=-1FR. RRULE-знание, общее для
+ * трансляторов; ord — 1..5 или -1 (последний).
+ */
+internal fun ordinalMonthlyRecurrence(ord: Int, day: DayOfWeek, range: IntRange) = RecurrenceCandidate(
+    "FREQ=MONTHLY;BYDAY=$ord${byDayCodes.getValue(day)}",
+    range,
+    period = Period.ofMonths(1),
+    anchorOrdinal = ord,
+    anchorDays = setOf(day),
+)
+
+/**
+ * Половина суток как подсказка 12-часовому кругу: «tonight at 8» → вечер,
+ * «every morning at 7» → утро. Семантика 12 — как у явных «утра/вечера»:
+ * 12 утра — полночь, 12 вечера — наступающая полночь.
+ */
+internal enum class DayHalf {
+    MORNING { override fun resolve(h: Int) = if (h == 12) 0 else h },
+    EVENING { override fun resolve(h: Int) = if (h < 12) h + 12 else 0 };
+    abstract fun resolve(h: Int): Int
+}
+
 /** Кандидат в дату события; endDate != null у диапазона «с 23 по 28 августа». */
 internal data class DateCandidate(
     val date: LocalDate,
     val tokens: IntRange,
     val endDate: LocalDate? = null,    // последний день диапазона, включительно
     val fromWeekday: Boolean = false,  // дата выведена из дня недели → сдвигаема на неделю
+    val dayHalf: DayHalf? = null,      // «tonight» — вечер для часа круга
     val confidence: Confidence = Confidence.EXPLICIT,
 )
 
@@ -100,19 +125,30 @@ internal data class RecurrenceCandidate(
     val period: Period,                           // шаг повтора («каждые 2 недели» → 2 недели)
     val anchorDays: Set<DayOfWeek> = emptySet(),  // «каждый вторник», «по будням»
     val anchorMonthDay: Int? = null,              // «каждое 15 число»
+    val anchorOrdinal: Int? = null,               // «второе воскресенье месяца»: 1..5 | -1, с anchorDays
     val untilDate: LocalDate? = null,             // «до конца августа», «до 15 сентября»
     val count: Int? = null,                       // «10 раз»
     val extraTokens: List<IntRange> = emptyList(),  // хвост конца — не смежен с основным матчем
+    val dayHalf: DayHalf? = null,                 // «every morning» — утро для часа круга
     val confidence: Confidence = Confidence.EXPLICIT,
 ) {
     /** Первая дата ≥ base, попадающая в повтор. */
     fun resolveStartDate(base: LocalDate): LocalDate {
         var d = base
         when {
+            anchorOrdinal != null ->
+                while (!isOrdinalDay(d)) d = d.plusDays(1)
             anchorMonthDay != null -> while (d.dayOfMonth != anchorMonthDay) d = d.plusDays(1)
             anchorDays.isNotEmpty() -> while (d.dayOfWeek !in anchorDays) d = d.plusDays(1)
         }
         return d
+    }
+
+    /** d — «anchorOrdinal-й anchorDay своего месяца» (-1 — последний). */
+    private fun isOrdinalDay(d: LocalDate): Boolean {
+        if (d.dayOfWeek !in anchorDays) return false
+        return if (anchorOrdinal!! > 0) (d.dayOfMonth - 1) / 7 + 1 == anchorOrdinal
+        else d.month != d.plusWeeks(1).month
     }
 
     /**

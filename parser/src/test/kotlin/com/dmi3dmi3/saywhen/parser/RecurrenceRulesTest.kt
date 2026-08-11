@@ -31,6 +31,25 @@ class RecurrenceRulesTest {
     }
 
     @Test
+    fun `порядковый день недели месяца — слово месяца обязательно`() {
+        assertRrule(
+            "правление каждый первый понедельник месяца",
+            "FREQ=MONTHLY;BYDAY=1MO", LocalDate.of(2026, 8, 3),
+        )
+        assertRrule(
+            "бранч каждое второе воскресенье месяца",
+            "FREQ=MONTHLY;BYDAY=2SU", LocalDate.of(2026, 8, 9),
+        )
+        assertRrule(
+            "отчёт каждую последнюю пятницу месяца",
+            "FREQ=MONTHLY;BYDAY=-1FR", LocalDate.of(2026, 7, 31),
+        )
+        assertEquals("правление", parser.parse("правление каждый первый понедельник месяца", now).title)
+        // без «месяца» — двусмысленно («каждый второй вторник» ≈ раз в две недели), не берём
+        assertNull(parser.parse("бранч каждое второе воскресенье", now).rrule)
+    }
+
+    @Test
     fun `каждый день недели — WEEKLY BYDAY со стартом в ближайший такой день`() {
         assertRrule("каждый вторник", "FREQ=WEEKLY;BYDAY=TU", LocalDate.of(2026, 7, 21))
         assertRrule("каждую пятницу", "FREQ=WEEKLY;BYDAY=FR", LocalDate.of(2026, 7, 24))

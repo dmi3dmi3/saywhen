@@ -62,6 +62,23 @@ internal object EnTimeRules {
             }
         }
 
+        // "quarter past six" / "quarter to 6" — час словом или цифрой, как у half past
+        if (t == "quarter" && free(used, i..i + 2, tokens.size)) {
+            val marker = tokens.getOrNull(i + 1)?.lower
+            val word = tokens.getOrNull(i + 2)?.lower
+            val h = wordHours[word] ?: word?.toIntOrNull()?.takeIf { it in 1..12 }
+            if (h != null) {
+                val time = when (marker) {
+                    "past" -> LocalTime.of(h, 15)
+                    "to" -> LocalTime.of(if (h == 1) 12 else h - 1, 45)
+                    else -> null
+                }
+                if (time != null) {
+                    return refine(tokens, used, time, i..i + 2, inCircle = true, Confidence.STRONG)
+                }
+            }
+        }
+
         // "at 5" / "at 5:30" / "at 5pm" / "at five"
         if (t == "at" && free(used, i..i + 1, tokens.size)) {
             val raw = tokens.getOrNull(i + 1)?.lower

@@ -1,6 +1,7 @@
 package com.dmi3dmi3.saywhen.parser.en
 
 import com.dmi3dmi3.saywhen.parser.DateCandidate
+import com.dmi3dmi3.saywhen.parser.DayHalf
 import com.dmi3dmi3.saywhen.parser.Token
 import com.dmi3dmi3.saywhen.parser.dateRangeCandidate
 import com.dmi3dmi3.saywhen.parser.dayPair
@@ -77,7 +78,17 @@ internal object EnDateRules {
         // диапазон — раньше одиночной даты: иначе "Aug 23 to …" съелось бы началом
         matchRange(tokens, i, today)?.let { return it }
 
+        // "day after tomorrow" — раньше голого "tomorrow", иначе съестся середина
+        if (t == "day" && tokens.getOrNull(i + 1)?.lower == "after" &&
+            tokens.getOrNull(i + 2)?.lower == "tomorrow"
+        ) {
+            return DateCandidate(today.plusDays(2), i..i + 2)
+        }
+
         relative[t]?.let { return DateCandidate(today.plusDays(it), i..i) }
+
+        // "tonight" — сегодня + вечер для часа круга ("tonight at 8" → 20:00)
+        if (t == "tonight") return DateCandidate(today, i..i, dayHalf = DayHalf.EVENING)
 
         matchWeekday(tokens, i, today)?.let { return it }
 

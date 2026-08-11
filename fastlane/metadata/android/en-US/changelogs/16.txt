@@ -1,0 +1,4 @@
+• More natural phrases: tonight, day after tomorrow, everyday, each tuesday, annually, every weekday, every other week, every morning/evening, quarter past six
+• Monthly ordinals: "every second sunday of the month"
+• Duration shorthand: 2h, 45m, 2h45m — with or without "for"
+• Fixed: tapping the created event opens it in your calendar app
