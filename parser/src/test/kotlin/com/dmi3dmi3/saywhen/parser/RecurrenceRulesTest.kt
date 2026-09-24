@@ -69,6 +69,8 @@ class RecurrenceRulesTest {
         assertRrule("каждые 2 недели", "FREQ=WEEKLY;INTERVAL=2", LocalDate.of(2026, 7, 21))
         assertRrule("каждые 3 дня", "FREQ=DAILY;INTERVAL=3", LocalDate.of(2026, 7, 21))
         assertRrule("каждые 2 месяца", "FREQ=MONTHLY;INTERVAL=2", LocalDate.of(2026, 7, 21))
+        assertRrule("каждые две недели", "FREQ=WEEKLY;INTERVAL=2", LocalDate.of(2026, 7, 21))
+        assertRrule("каждые три дня", "FREQ=DAILY;INTERVAL=3", LocalDate.of(2026, 7, 21))
     }
 
     @Test
@@ -120,6 +122,57 @@ class RecurrenceRulesTest {
         assertEquals(TokenMatch.Field.RECURRENCE, e.matches[0].field)
         assertEquals(5..18, e.matches[0].range)  // «каждый вторник»
         assertEquals(TokenMatch.Field.TIME, e.matches[1].field)
+    }
+
+    @Test
+    fun `наречия частоты — одним словом`() {
+        assertRrule("зарядка ежедневно", "FREQ=DAILY", LocalDate.of(2026, 7, 21))
+        assertRrule("отчёт еженедельно", "FREQ=WEEKLY", LocalDate.of(2026, 7, 21))
+        assertRrule("аренда ежемесячно", "FREQ=MONTHLY", LocalDate.of(2026, 7, 21))
+        assertRrule("осмотр ежегодно", "FREQ=YEARLY", LocalDate.of(2026, 7, 21))
+    }
+
+    @Test
+    fun `каждое утро, вечер, ночь — DAILY с половиной суток для часа`() {
+        val m = parser.parse("кофе каждое утро в 8", now)
+        assertEquals("FREQ=DAILY", m.rrule)
+        assertEquals(8, m.start.hour)
+
+        val e = parser.parse("созвон каждый вечер в 8", now)
+        assertEquals("FREQ=DAILY", e.rrule)
+        assertEquals(20, e.start.hour)
+
+        val n2 = parser.parse("проверка каждую ночь в 11", now)
+        assertEquals("FREQ=DAILY", n2.rrule)
+        assertEquals(23, n2.start.hour)
+    }
+
+    @Test
+    fun `по утрам и вечерам — дательный ежедневный`() {
+        val m = parser.parse("пробежка по утрам в 7", now)
+        assertEquals("FREQ=DAILY", m.rrule)
+        assertEquals(7, m.start.hour)
+        assertEquals("FREQ=DAILY", parser.parse("чтение по вечерам", now).rrule)
+    }
+
+    @Test
+    fun `каждое пятое воскресенье месяца`() {
+        assertRrule(
+            "бранч каждое пятое воскресенье месяца",
+            "FREQ=MONTHLY;BYDAY=5SU", LocalDate.of(2026, 8, 30),
+        )
+    }
+
+    @Test
+    fun `каждые выходные`() {
+        assertRrule("дача каждые выходные", "FREQ=WEEKLY;BYDAY=SA,SU", LocalDate.of(2026, 7, 25))
+    }
+
+    @Test
+    fun `раз в единицу — частота без каждый`() {
+        assertRrule("уборка раз в неделю", "FREQ=WEEKLY", LocalDate.of(2026, 7, 21))
+        assertRrule("отчёт раз в месяц", "FREQ=MONTHLY", LocalDate.of(2026, 7, 21))
+        assertRrule("стрижка раз в 2 недели", "FREQ=WEEKLY;INTERVAL=2", LocalDate.of(2026, 7, 21))
     }
 
     @Test

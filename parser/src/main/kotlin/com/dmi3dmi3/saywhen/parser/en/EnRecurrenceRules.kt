@@ -3,7 +3,9 @@ package com.dmi3dmi3.saywhen.parser.en
 import com.dmi3dmi3.saywhen.parser.DayHalf
 import com.dmi3dmi3.saywhen.parser.RecurrenceCandidate
 import com.dmi3dmi3.saywhen.parser.Token
+import com.dmi3dmi3.saywhen.parser.free
 import com.dmi3dmi3.saywhen.parser.ordinalMonthlyRecurrence
+import com.dmi3dmi3.saywhen.parser.periodOf
 import com.dmi3dmi3.saywhen.parser.weeklyRecurrence
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -48,6 +50,12 @@ internal object EnRecurrenceRules {
     // "every 15th" — порядковый суффикс обязателен: он и есть маркер числа месяца
     private val ordinalDay = Regex("""(\d{1,2})(?:st|nd|rd|th)""")
 
+    // "every two weeks" — интервал числительным словом
+    private val intervalWords = mapOf(
+        "two" to 2, "three" to 3, "four" to 4, "five" to 5,
+        "six" to 6, "seven" to 7, "eight" to 8, "nine" to 9, "ten" to 10,
+    )
+
     /** Первый матч по свободным токенам + хвост конца повтора; used не трогает. */
     fun find(tokens: List<Token>, today: LocalDate, used: BooleanArray): RecurrenceCandidate? {
         for (i in tokens.indices) {
@@ -60,14 +68,30 @@ internal object EnRecurrenceRules {
     private fun matchAt(tokens: List<Token>, i: Int, used: BooleanArray): RecurrenceCandidate? {
         val t = tokens[i].lower
 
-        // "on weekdays" / "on weekends"
+        // "on weekdays" / "on weekends" / "on tuesdays [and thursdays …]"
         if (t == "on" && free(used, i..i + 1, tokens.size)) {
-            onDays[tokens.getOrNull(i + 1)?.lower]?.let { return weeklyRecurrence(it, i..i + 1) }
+            val second = tokens.getOrNull(i + 1)?.lower
+            onDays[second]?.let { return weeklyRecurrence(it, i..i + 1) }
+            pluralDay(second)?.let { first ->
+                val days = mutableSetOf(first)
+                val end = consumeDays(tokens, i + 2, used, days) { w -> pluralDay(w)?.let(::setOf) }
+                return weeklyRecurrence(days, i until end)
+            }
         }
 
         // "daily" / "weekly" / "monthly" / "yearly"
         singleFreq[t]?.let {
             return RecurrenceCandidate("FREQ=$it", i..i, period = periodOf(it, 1))
+        }
+
+        // "once a week/month" — частота без every; "twice a week" не берём:
+        // дни неизвестны, RRULE это не выражает
+        if (t == "once" && tokens.getOrNull(i + 1)?.lower in setOf("a", "an")) {
+            unitFreq[tokens.getOrNull(i + 2)?.lower]?.let { f ->
+                if (free(used, i..i + 2, tokens.size)) {
+                    return RecurrenceCandidate("FREQ=$f", i..i + 2, period = periodOf(f, 1))
+                }
+            }
         }
 
         if (t != "every" && t != "each") return null
@@ -77,9 +101,16 @@ internal object EnRecurrenceRules {
         EnDateRules.weekdays[next]?.let { first ->
             if (free(used, i..i + 1, tokens.size)) {
                 val days = mutableSetOf(first)
-                val end = consumeDays(tokens, i + 2, used, days)
+                val end = consumeDays(tokens, i + 2, used, days) { w ->
+                    EnDateRules.weekdays[w]?.let(::setOf)
+                }
                 return weeklyRecurrence(days, i until end)
             }
+        }
+
+        // "every weekend" — как "on weekends"
+        if (next == "weekend" && free(used, i..i + 1, tokens.size)) {
+            return weeklyRecurrence(onDays.getValue("weekends"), i..i + 1)
         }
 
         // "every second sunday of the month" — раньше "every 15th": иначе "2nd"
@@ -143,7 +174,7 @@ internal object EnRecurrenceRules {
         }
 
         // "every 2 weeks"; INTERVAL=1 не пишем — это дефолт RFC 5545
-        val n = next.toIntOrNull() ?: return null
+        val n = next.toIntOrNull() ?: intervalWords[next] ?: return null
         val freq = unitFreq[tokens.getOrNull(i + 2)?.lower]
         if (freq != null && n in 1..99 && free(used, i..i + 2, tokens.size)) {
             val rrule = if (n > 1) "FREQ=$freq;INTERVAL=$n" else "FREQ=$freq"
@@ -243,31 +274,28 @@ internal object EnRecurrenceRules {
         }
     }
 
-    /** Хвост списка дней `[and] <day>`… начиная с start. */
+    /** "tuesdays" → вторник; множественное число дня недели. */
+    private fun pluralDay(w: String?): DayOfWeek? =
+        w?.takeIf { it.length > 2 && it.endsWith("s") }
+            ?.dropLast(1)?.let { EnDateRules.weekdays[it] }
+
+    /** Хвост списка дней `[and] <day>`… начиная с start; возвращает индекс за последним съеденным. */
     private fun consumeDays(
         tokens: List<Token>,
         start: Int,
         used: BooleanArray,
         days: MutableSet<DayOfWeek>,
+        lookup: (String) -> Set<DayOfWeek>?,
     ): Int {
         var j = start
         while (true) {
             val k = if (tokens.getOrNull(j)?.lower == "and") j + 1 else j
             val word = tokens.getOrNull(k)?.lower ?: break
             if ((j..k).any { used[it] }) break
-            days += EnDateRules.weekdays[word] ?: break
+            days += lookup(word) ?: break
             j = k + 1
         }
         return j
     }
 
-    private fun periodOf(freq: String, n: Int): Period = when (freq) {
-        "DAILY" -> Period.ofDays(n)
-        "WEEKLY" -> Period.ofWeeks(n)
-        "MONTHLY" -> Period.ofMonths(n)
-        else -> Period.ofYears(n)
-    }
-
-    private fun free(used: BooleanArray, range: IntRange, size: Int): Boolean =
-        range.last < size && range.all { !used[it] }
 }

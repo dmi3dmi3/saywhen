@@ -1,5 +1,6 @@
 package com.dmi3dmi3.saywhen.parser.en
 
+import com.dmi3dmi3.saywhen.parser.CompactReminder
 import com.dmi3dmi3.saywhen.parser.Extraction
 import com.dmi3dmi3.saywhen.parser.Token
 import com.dmi3dmi3.saywhen.parser.Translator
@@ -28,10 +29,18 @@ internal object EnglishTranslator : Translator {
             r.extraTokens.forEach(::take)
         }
 
+        // напоминание — раньше дат/времени (см. RussianTranslator)
+        val reminder = listOfNotNull(
+            CompactReminder.find(tokens, used, setOf("h", "hr", "hrs")),
+            EnReminderRules.find(tokens, used),
+        ).maxByOrNull { it.tokens.last }
+        reminder?.let { take(it.tokens) }
+
         val date = EnDateRules.findAll(tokens, now, used).firstOrNull()
         date?.let { take(it.tokens) }
 
         val time = EnTimeRules.find(tokens, used)
+            ?: EnTimeRules.offsetTime(tokens, used, now)      // "in 2 hours"
             ?: EnTimeRules.bareHourAfterClaim(tokens, used)  // "tomorrow 11 standup"
         time?.let { take(it.tokens) }
 
@@ -39,6 +48,6 @@ internal object EnglishTranslator : Translator {
         val duration =
             if (time != null && time.duration == null) EnDurationRules.find(tokens, used) else null
 
-        return Extraction(recurrence = rec, date = date, time = time, duration = duration)
+        return Extraction(recurrence = rec, date = date, time = time, duration = duration, reminder = reminder)
     }
 }

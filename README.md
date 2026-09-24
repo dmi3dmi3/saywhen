@@ -2,19 +2,19 @@
 
 **No forms, no fields. Just say when.**
 
-One phrase — and it's on your calendar. Type it the way you'd say it,
-in English or Russian:
+One phrase — and it's on your calendar. Type it the way you'd say it, in
+English, Russian, Italian, Spanish, or German:
 
 > Gym every tuesday and friday at 9
 >
-> Movie tomorrow at 11 for an hour and a half
+> Movie tomorrow at 11 for 1.5h !10
 >
 > Dentist june 3 at 12:30
 
-SayWhen parses the phrase as you type — date, time, duration, recurrence —
-shows a live preview of what it understood, and writes the event straight to
-the calendar you chose. No account of its own, no server, no network access
-at all: the app doesn't even declare the `INTERNET` permission.
+SayWhen parses the phrase as you type: date, time, duration, recurrence,
+a “!10” reminder. It shows a live preview of what it understood and writes
+the event straight to the calendar you chose. No sign-up, no server, no
+network access at all: the app doesn't even declare the `INTERNET` permission.
 
 | Input window | Settings | Widget |
 |---|---|---|
@@ -22,8 +22,10 @@ at all: the app doesn't even declare the `INTERNET` permission.
 
 ## Install
 
-Grab the APK from [Releases](https://github.com/dmi3dmi3/saywhen/releases)
-and open it on the device (Android 8.0+). F-Droid — coming soon.
+Get it on [F-Droid](https://f-droid.org/packages/com.dmi3dmi3.saywhen/),
+or grab the APK from [Releases](https://github.com/dmi3dmi3/saywhen/releases)
+and open it on the device (Android 8.0+). Since v3.0 both channels ship the
+same developer-signed APK, so you can switch between them freely.
 
 ### Verify
 
@@ -37,7 +39,7 @@ Check with `apksigner verify --print-certs app-release.apk`.
 
 ## Permissions & privacy
 
-**Events go to your calendar — nowhere else.**
+**Events go to your calendar and nowhere else.**
 
 - `READ_CALENDAR` — list your calendars in settings and pick the target one.
 - `WRITE_CALENDAR` — insert the event you asked for.
@@ -52,26 +54,24 @@ Details in [PRIVACY.md](PRIVACY.md).
 ```
 
 Kotlin + Jetpack Compose, two modules: `:parser` (pure JVM, the phrase
-parser) and `:app` (Android). Without release signing credentials
-`assembleRelease` produces an unsigned APK — that's expected.
+parser) and `:app` (Android).
 
 ## Known limitations
 
 SayWhen writes events through Android's system calendar storage
-(`CalendarContract`), so the target calendar must be registered with the
-system. Apps that keep events in their own isolated storage and don't
-register device calendars — notably **Proton Calendar** (its E2E encryption
-also rules out CalDAV bridges like DAVx5) — cannot be written to by any
-third-party app, SayWhen included. Events you create land in the calendar
-selected in settings (Google, local, etc.) and won't show up in such apps.
-Workaround for Proton: a bridge like
+(`CalendarContract`), so it can only target calendars registered with the
+system. **Proton Calendar** doesn't register one: its events live in the
+app's own encrypted storage, so it never shows up in the calendar list and
+no third-party app can write to it, SayWhen included. Proton offers no
+CalDAV either, so bridges like DAVx5 don't help. Workaround:
 [Sync Provider for Proton](https://apps.olausson.de/sync_provider_for_proton/),
-then pick its calendar in SayWhen settings.
+a paid third-party bridge that exposes Proton calendars to the system.
+Install it, then pick its calendar in SayWhen settings.
 
-Also mind sync latency: events created by SayWhen are visible in on-device
-calendar apps immediately, but reach the cloud (web calendar, other devices)
-with your account's regular sync cycle — and events created online take the
-same cycle to appear on the device.
+Also mind sync latency. Events created by SayWhen show up in on-device
+calendar apps immediately but reach the cloud (web calendar, other devices)
+with your account's regular sync cycle. Events created online take the same
+cycle to appear on the device.
 
 ## License
 
@@ -81,7 +81,7 @@ same cycle to appear on the device.
 
 This is a **read-only source mirror**: development happens in a private
 repository, and each release lands here as a single source drop. Patches are
-not accepted — pull requests will be closed. Bugs and ideas are welcome in
+not accepted and pull requests will be closed. Bugs and ideas are welcome in
 [Issues](https://github.com/dmi3dmi3/saywhen/issues).
 
 ---
@@ -90,39 +90,28 @@ not accepted — pull requests will be closed. Bugs and ideas are welcome in
 
 **Без форм и полей. Просто скажи когда.**
 
-Одна фраза — и событие в календаре. Пишите так, как сказали бы вслух,
-по-русски или по-английски:
+Одна фраза — и событие в календаре. Пишите так, как сказали бы вслух, на
+русском, английском, итальянском, испанском или немецком:
 
 > Спорт каждый вторник и пятницу в 9
 >
-> Кино завтра в 11 на полтора часа
+> Кино завтра в 11 на полтора часа !10
 >
 > Стоматолог 3 июня в 12:30
 
-SayWhen разбирает фразу прямо при вводе — дату, время, длительность,
-повторяемость, — показывает живой превью того, что понял, и записывает
-событие в выбранный вами календарь. Без своего аккаунта, без сервера и
-вообще без доступа в сеть: приложение даже не объявляет разрешение
-`INTERNET`.
+SayWhen разбирает фразу прямо при вводе: дату, время, длительность,
+повторяемость, напоминание «!10». Показывает, что понял, и записывает
+событие в выбранный вами календарь. Без регистрации, без сервера и вообще
+без доступа в сеть: приложение даже не объявляет разрешение `INTERNET`.
 
-**Установка:** APK на странице
-[Releases](https://github.com/dmi3dmi3/saywhen/releases) (Android 8.0+);
-F-Droid — скоро.
+**Установка:** [F-Droid](https://f-droid.org/packages/com.dmi3dmi3.saywhen/)
+или APK на странице [Releases](https://github.com/dmi3dmi3/saywhen/releases)
+(Android 8.0+). С v3.0 в обоих источниках один и тот же APK с подписью
+разработчика, так что переходить между ними можно свободно.
 
-**Приватность:** события идут только в ваш календарь — больше никуда.
-Подробности — в [PRIVACY.md](PRIVACY.md).
-
-**Известное ограничение:** SayWhen пишет события через системное календарное
-хранилище Android, поэтому календари, которых нет в системе, недоступны —
-в частности **Proton Calendar** (E2E-шифрование закрывает и путь через
-CalDAV/DAVx5). Событие уйдёт в выбранный в настройках системный календарь и
-в таких приложениях не появится. Обход для Proton — мост
-[Sync Provider for Proton](https://apps.olausson.de/sync_provider_for_proton/)
-и его календарь в настройках SayWhen. И про задержку синка: созданное в
-SayWhen событие видно календарным приложениям устройства сразу, а в облако
-(веб-календарь, другие устройства) уезжает штатным циклом синхронизации
-аккаунта; созданное онлайн — тем же циклом доезжает до устройства.
+**Приватность:** события идут только в ваш календарь и больше никуда.
+Подробности в [PRIVACY.md](PRIVACY.md).
 
 **Зеркало:** разработка идёт в приватном репозитории, сюда попадает срез
-исходников на каждый релиз. Патчи не принимаются (PR будут закрыты); баги и
-идеи — в [Issues](https://github.com/dmi3dmi3/saywhen/issues).
+исходников на каждый релиз. Патчи не принимаются, PR будут закрыты. Баги и
+идеи присылайте в [Issues](https://github.com/dmi3dmi3/saywhen/issues).

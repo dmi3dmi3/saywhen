@@ -35,11 +35,12 @@ internal object Arbitration {
             return null
         }
 
-        // порядок розыгрыша полей — тот же, что у правил: Rec → Date → Time → Dur
+        // порядок розыгрыша полей — тот же, что у правил: Rec → Date → Time → Dur → Rem
         val recurrence = pick({ it.recurrence }, { listOf(it.tokens) + it.extraTokens }, { it.confidence })
         val date = pick({ it.date }, { listOf(it.tokens) }, { it.confidence })
         val time = pick({ it.time }, { listOf(it.tokens) }, { it.confidence })
         val duration = pick({ it.duration }, { listOf(it.tokens) }, { it.confidence })
+        val reminder = pick({ it.reminder }, { listOf(it.tokens) }, { it.confidence })
         return Extraction(
             recurrence = recurrence,
             date = date,
@@ -47,6 +48,7 @@ internal object Arbitration {
             // гард: длительность осмысленна только при простом времени — внутри
             // одного транслятора это держит его порядок правил, между языками — мердж
             duration = duration.takeIf { time != null && time.duration == null },
+            reminder = reminder,
         )
     }
 
@@ -62,5 +64,6 @@ internal object Arbitration {
         e.date?.let { addAll(it.tokens) }
         e.time?.let { addAll(it.tokens) }
         e.duration?.let { addAll(it.tokens) }
+        e.reminder?.let { addAll(it.tokens) }
     }
 }

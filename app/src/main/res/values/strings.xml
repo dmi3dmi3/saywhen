@@ -24,12 +24,14 @@
     <string name="date_locale">en</string>
     <string name="summary_date_pattern">EEE, MMM d</string>
     <string name="summary_time_pattern">h:mm a</string>
+    <string name="summary_reminder_at_event">🔔 at start</string>
+    <string name="summary_reminder_before">🔔 %1$s before</string>
 
     <!-- Главный экран: hero и действия (задача 18) -->
     <string name="hero_slogan">No forms, no fields. Just say when.</string>
     <string name="hero_description">One phrase — and it\'s on your calendar.</string>
     <string name="example_phrase_1">Gym every tuesday and friday at 9</string>
-    <string name="example_phrase_2">Movie tomorrow at 11 for an hour and a half</string>
+    <string name="example_phrase_2">Movie tomorrow at 11 for 1.5h !10</string>
     <string name="action_add_widget">Add widget</string>
     <string name="action_try">Try it</string>
     <string name="action_grant">Allow</string>
@@ -38,14 +40,17 @@
     <string name="settings_no_calendars">No calendars found — add a calendar account</string>
 
     <!-- Настройки -->
-    <string name="settings_title">Settings</string>
     <string name="settings_calendar">Calendar</string>
     <string name="settings_calendar_auto">Automatic (primary)</string>
     <string name="settings_calendar_permission">Grant calendar access to pick a specific one</string>
-    <string name="settings_duration">Default duration</string>
-    <string name="settings_behavior">Behavior</string>
-    <string name="setting_nod">Tab nod on create</string>
-    <string name="setting_haptic">Vibrate on create</string>
+    <string name="settings_duration">Duration</string>
+    <string name="settings_reminder">Reminder</string>
+    <string name="reminder_off">Off</string>
+    <string name="reminder_at_event">At start</string>
+    <string name="reminder_hint">For a single event, put \"!10\" right in the phrase.</string>
+    <string name="settings_behavior">On create</string>
+    <string name="setting_nod">Tab nod</string>
+    <string name="setting_haptic">Vibrate</string>
     <!-- onClickLabel для TalkBack: «Double-tap to …» -->
     <string name="action_close">close</string>
     <string name="action_open_settings">open settings</string>
@@ -66,6 +71,18 @@
     <string name="language_system">System</string>
     <string name="language_russian" translatable="false">Русский</string>
     <string name="language_english" translatable="false">English</string>
+    <string name="language_italian" translatable="false">Italiano</string>
+    <string name="language_spanish" translatable="false">Español</string>
+    <string name="language_german" translatable="false">Deutsch</string>
+    <string name="settings_advanced">Advanced</string>
+    <string name="parser_languages">Recognition languages</string>
+    <string name="parser_languages_hint">Default: interface language and English.</string>
+    <string name="activity_window">Active hours</string>
+    <string name="activity_window_examples">“at 9” → %1$d:00 · “at 7” → %2$d:00</string>
+    <string name="activity_window_hint">When recognition is ambiguous, times inside the active hours win.</string>
+    <string name="a11y_expanded">expanded</string>
+    <string name="a11y_collapsed">collapsed</string>
+    <string name="version_copied">Version copied</string>
     <string name="unit_hours">h</string>
     <string name="unit_minutes">min</string>
 </resources>

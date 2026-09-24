@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Немецкая локаль UI (задача 28); перевод агентский, без нейтивной вычитки. -->
+
+    <!-- Виджет -->
+    <string name="widget_label">+ Termin</string>
+    <string name="widget_description">Schneller Termin aus Text</string>
+
+    <!-- Окно быстрого ввода -->
+    <string name="quickadd_placeholder">Titel des Termins</string>
+    <string name="quickadd_create">Erstellen</string>
+    <string name="quickadd_created">Erstellt ✓ %1$s</string>
+    <string name="quickadd_undo">Rückgängig</string>
+    <string name="error_no_calendar">Kein Kalender gefunden — ist ein Konto eingerichtet?</string>
+    <string name="error_insert_failed">Termin konnte nicht erstellt werden</string>
+    <string name="error_no_permission">Kalenderzugriff wird benötigt, um Termine zu erstellen</string>
+    <string name="error_no_calendar_app">Keine Kalender-App zum Öffnen — der Termin ist trotzdem gespeichert</string>
+
+    <!-- Строка-итог превью -->
+    <string name="summary_all_day">ganztägig</string>
+    <string name="summary_today">heute</string>
+    <string name="summary_tomorrow">morgen</string>
+    <string name="date_locale">de</string>
+    <string name="summary_date_pattern">EEE, d. MMM</string>
+    <string name="summary_time_pattern">H:mm</string>
+    <string name="summary_reminder_at_event">🔔 bei Beginn</string>
+    <string name="summary_reminder_before">🔔 %1$s vorher</string>
+
+    <!-- Главный экран -->
+    <string name="hero_slogan">Keine Formulare, keine Felder. Sag einfach wann.</string>
+    <string name="hero_description">Ein Satz — und er steht im Kalender.</string>
+    <string name="example_phrase_1">Sport jeden Dienstag und Freitag um 9</string>
+    <string name="example_phrase_2">Kino morgen um 11 für anderthalb Stunden !10</string>
+    <string name="action_add_widget">Widget hinzufügen</string>
+    <string name="action_try">Ausprobieren</string>
+    <string name="action_grant">Erlauben</string>
+    <string name="action_app_settings">App-Einstellungen</string>
+    <string name="action_add_account">Konto hinzufügen</string>
+    <string name="settings_no_calendars">Keine Kalender gefunden — füge ein Kalenderkonto hinzu</string>
+
+    <!-- Настройки -->
+    <string name="settings_calendar">Kalender</string>
+    <string name="settings_calendar_auto">Automatisch (primär)</string>
+    <string name="settings_calendar_permission">Erlaube Kalenderzugriff, um einen auszuwählen</string>
+    <string name="settings_duration">Dauer</string>
+    <string name="settings_reminder">Erinnerung</string>
+    <string name="reminder_off">Aus</string>
+    <string name="reminder_at_event">Bei Beginn</string>
+    <string name="reminder_hint">Für einen einzelnen Termin: „!10“ direkt im Satz.</string>
+    <string name="settings_behavior">Beim Erstellen</string>
+    <string name="setting_nod">Nicken des Etiketts</string>
+    <string name="setting_haptic">Vibration</string>
+    <string name="action_close">schließen</string>
+    <string name="action_open_settings">Einstellungen öffnen</string>
+    <string name="action_open_event">im Kalender öffnen</string>
+
+    <!-- Подвал About -->
+    <string name="about_source">Quellcode</string>
+    <string name="about_issues">Problem melden</string>
+    <string name="about_license">Lizenz GPL-3.0</string>
+    <string name="about_privacy">Termine gehen nur in deinen Kalender — nirgendwo sonst.</string>
+    <string name="about_privacy_details">Datenschutzdetails</string>
+    <string name="about_copy_version">Version kopieren</string>
+    <string name="settings_theme">Design</string>
+    <string name="theme_system">System</string>
+    <string name="theme_light">Hell</string>
+    <string name="theme_dark">Dunkel</string>
+    <string name="settings_language">Sprache</string>
+    <string name="language_system">System</string>
+    <string name="settings_advanced">Erweitert</string>
+    <string name="parser_languages">Erkennungssprachen</string>
+    <string name="parser_languages_hint">Standard: Oberflächensprache und Englisch.</string>
+    <string name="activity_window">Aktive Stunden</string>
+    <string name="activity_window_examples">„um 9“ → %1$d:00 · „um 7“ → %2$d:00</string>
+    <string name="activity_window_hint">Bei Mehrdeutigkeit gewinnen Zeiten innerhalb der aktiven Stunden.</string>
+    <string name="a11y_expanded">ausgeklappt</string>
+    <string name="a11y_collapsed">eingeklappt</string>
+    <string name="version_copied">Version kopiert</string>
+    <string name="unit_hours">Std</string>
+    <string name="unit_minutes">Min</string>
+</resources>

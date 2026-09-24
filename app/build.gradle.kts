@@ -12,10 +12,10 @@ android {
         applicationId = "com.dmi3dmi3.saywhen"
         minSdk = 26
         targetSdk = 36
-        // versionCode: +1 на каждую загрузку в Play (монотонный счётчик);
+        // versionCode: +1 на каждый релиз (монотонный счётчик);
         // versionName — человекочитаемый тег релиза, поднимать вместе с ним
-        versionCode = 16
-        versionName = "2.1.0"
+        versionCode = 17
+        versionName = "3.0.0"
     }
 
     // upload-ключ для Play App Signing; креды — SAYWHEN_* в ~/.gradle/gradle.properties
@@ -40,6 +40,11 @@ android {
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.findByName("upload")
+            // воспроизводимость (задача 31): git-ревизия в META-INF привязывает
+            // APK к репозиторию сборки — у F-Droid (сборка из зеркала) она другая
+            vcsInfo {
+                include = false
+            }
         }
     }
 
@@ -53,6 +58,13 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true  // версия в подвале About (задача 21)
+    }
+    // воспроизводимость (задача 31): Play-блоб шифруется случайным ключом на
+    // каждую сборку — единственный источник недетерминизма APK; Play всё
+    // равно недоступен (см. бэклог), а fdroid verify без этого не сойдётся
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
     }
 }
 

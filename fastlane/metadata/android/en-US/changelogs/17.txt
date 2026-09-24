@@ -1,0 +1,12 @@
+⚠️ New signing key.
+This update will not install over the F-Droid-signed version. Uninstall SayWhen and install it again, this is a one-time step.
+Your events are safe: they live in the calendar, not in the app. App settings, however, need to be set again.
+Why: F-Droid now verifies that our build can be reproduced bit for bit, and ships the APK signed by the developer. It is the same signature as the GitHub build, so you can install from one source and update from the other.
+
+In 3.0 the app supports five languages and reminders.
+
+• Italian, Spanish and German. Phrases in these languages are recognized and the interface is translated.
+• Reminders. Type one right in the phrase: "meeting tomorrow at 3pm !10" or "remind me 10 minutes before". A standing reminder for every event is set in settings.
+• Settings rebuilt: calendar, duration, reminder and themes.
+• Advanced settings are there for the odd case. Recognition languages: your interface language and English are on from the start, add the others if you write in them. Active hours: the bounds of your day, so that a bare "at 9" reads as morning rather than evening.
+• English and Russian understand more everyday wording, and a number of parsing mistakes are fixed.

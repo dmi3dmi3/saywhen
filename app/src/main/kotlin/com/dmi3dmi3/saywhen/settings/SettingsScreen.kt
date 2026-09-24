@@ -9,6 +9,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatDelegate
@@ -20,6 +21,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -27,6 +30,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -37,14 +41,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.RangeSlider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -68,6 +72,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.os.LocaleListCompat
@@ -75,12 +83,18 @@ import com.dmi3dmi3.saywhen.BuildConfig
 import com.dmi3dmi3.saywhen.R
 import com.dmi3dmi3.saywhen.calendar.CalendarInfo
 import com.dmi3dmi3.saywhen.calendar.CalendarRepository
+import com.dmi3dmi3.saywhen.parser.MultilingualEventParser
+import com.dmi3dmi3.saywhen.parser.resolveTwelveHour
+import kotlin.math.roundToInt
 import com.dmi3dmi3.saywhen.quickadd.ErrorAction
 import com.dmi3dmi3.saywhen.quickadd.ErrorActionButton
 import com.dmi3dmi3.saywhen.widget.SayWhenWidgetProvider
 import kotlinx.coroutines.launch
 
 private val DURATION_OPTIONS = listOf(30, 60, 90, 120)
+
+// дефолт-напоминание (задача 29): null — выкл, 0 — в начале события
+private val REMINDER_OPTIONS = listOf(5, 10, 30, 60)
 
 // публичное зеркало (задача 22) — дом релизов и канал фидбека
 private const val REPO_URL = "https://github.com/dmi3dmi3/saywhen"
@@ -91,7 +105,7 @@ private const val REPO_URL = "https://github.com/dmi3dmi3/saywhen"
  * строку-значение, полный список — в шторке (у людей бывает и десять
  * календарей). Выбранное состояние везде на контрастном primary (design.md).
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(onOpenQuickAdd: (prefill: String?) -> Unit) {
     val context = LocalContext.current
@@ -123,7 +137,7 @@ fun SettingsScreen(onOpenQuickAdd: (prefill: String?) -> Unit) {
 
     Column(
         Modifier.padding(16.dp).verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         // hero: имя → слоган → описание → примеры-доказательства → действия;
         // каждая строка тише предыдущей
@@ -153,7 +167,9 @@ fun SettingsScreen(onOpenQuickAdd: (prefill: String?) -> Unit) {
             }
         }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        // FlowRow: на крупном шрифте вторая кнопка переносится вниз целиком,
+        // а не ломает слово внутри пилюли («Попробоват/ь»)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             val widgetManager = remember { context.getSystemService(AppWidgetManager::class.java) }
             if (widgetManager?.isRequestPinAppWidgetSupported == true) {
                 Button(onClick = {
@@ -189,10 +205,33 @@ fun SettingsScreen(onOpenQuickAdd: (prefill: String?) -> Unit) {
         Section(R.string.settings_duration) {
             val hourUnit = stringResource(R.string.unit_hours)
             val minuteUnit = stringResource(R.string.unit_minutes)
-            SegmentedRow(
+            // чипы, а не сегменты: на крупном шрифте переносятся, а не режут текст
+            OptionChips(
                 options = DURATION_OPTIONS.map { it to durationLabel(it, hourUnit, minuteUnit) },
                 selected = settings.defaultDurationMinutes,
                 onSelect = { scope.launch { repo.setDefaultDuration(it) } },
+            )
+        }
+
+        // напоминание по умолчанию (29): выкл со старта — база «напоминаний нет,
+        // пока не попросили»; per-event вход — формой «!10» в тексте
+        Section(R.string.settings_reminder) {
+            val hourUnit = stringResource(R.string.unit_hours)
+            val minuteUnit = stringResource(R.string.unit_minutes)
+            OptionChips(
+                options = listOf<Pair<Int?, String>>(
+                    null to stringResource(R.string.reminder_off),
+                    0 to stringResource(R.string.reminder_at_event),
+                ) + REMINDER_OPTIONS.map { it to durationLabel(it, hourUnit, minuteUnit) },
+                selected = settings.defaultReminderMinutes,
+                onSelect = { scope.launch { repo.setDefaultReminder(it) } },
+            )
+            // discoverability «!10»: сюда приходят за напоминанием одного события
+            Text(
+                stringResource(R.string.reminder_hint),
+                Modifier.padding(start = 6.dp, top = 5.dp),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
 
@@ -210,14 +249,19 @@ fun SettingsScreen(onOpenQuickAdd: (prefill: String?) -> Unit) {
         }
 
         // язык UI: per-app locale, выбор переживает перезапуск (autoStoreLocales);
-        // парсер всегда двуязычный — переключается только интерфейс
+        // парсер всегда мультиязычный — переключается только интерфейс
         Section(R.string.settings_language) {
+            // системная локаль может прийти регионом («it-IT») — сравниваем по языку
             val current = AppCompatDelegate.getApplicationLocales().toLanguageTags()
-            SegmentedRow(
+                .substringBefore(",").substringBefore("-")
+            OptionChips(
                 options = listOf(
                     "" to stringResource(R.string.language_system),
                     "ru" to stringResource(R.string.language_russian),
                     "en" to stringResource(R.string.language_english),
+                    "it" to stringResource(R.string.language_italian),
+                    "es" to stringResource(R.string.language_spanish),
+                    "de" to stringResource(R.string.language_german),
                 ),
                 selected = current,
                 onSelect = {
@@ -226,7 +270,17 @@ fun SettingsScreen(onOpenQuickAdd: (prefill: String?) -> Unit) {
             )
         }
 
+        AdvancedSection(
+            manual = settings.parserLanguages,
+            windowStart = settings.activityStartHour,
+            windowEnd = settings.activityEndHour,
+            onSelectLanguages = { scope.launch { repo.setParserLanguages(it) } },
+            onSetWindow = { s, e -> scope.launch { repo.setActivityWindow(s, e) } },
+        )
+
         AboutFooter()
+        // жестовая навигация: подвал не прижимается к системной полоске
+        Spacer(Modifier.navigationBarsPadding())
     }
 
     if (showCalendarSheet) {
@@ -239,6 +293,173 @@ fun SettingsScreen(onOpenQuickAdd: (prefill: String?) -> Unit) {
                     showCalendarSheet = false
                 },
                 onRequestPermission = { permission.launch(Manifest.permission.READ_CALENDAR) },
+            )
+        }
+    }
+}
+
+/**
+ * «Расширенные» (задачи 30/30a): сворачиваемая карточка перед подвалом —
+ * языки распознавания и окно активности. Свёрнутость не персистится.
+ * [manual] == null — авто-режим {язык UI, en}: чипы показывают действующий
+ * набор, первое же касание пишет явный и отключает follow. Окно — часы
+ * [windowStart, windowEnd), слайдер пишет в стор по отпусканию ползунка.
+ */
+@Composable
+private fun AdvancedSection(
+    manual: Set<String>?,
+    windowStart: Int,
+    windowEnd: Int,
+    onSelectLanguages: (Set<String>) -> Unit,
+    onSetWindow: (Int, Int) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val uiLanguage = stringResource(R.string.date_locale)
+    val enabled = manual ?: parserOrder(uiLanguage, null).toSet()
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(10.dp)) {
+            val stateExpanded = stringResource(R.string.a11y_expanded)
+            val stateCollapsed = stringResource(R.string.a11y_collapsed)
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 48.dp)
+                    .clickable(role = Role.Button) { expanded = !expanded }
+                    // TalkBack: состояние секции словами, глиф-шеврон — украшение
+                    .semantics {
+                        stateDescription = if (expanded) stateExpanded else stateCollapsed
+                    }
+                    .padding(horizontal = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    stringResource(R.string.settings_advanced),
+                    Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Text(
+                    if (expanded) "⌃" else "⌄",
+                    Modifier.clearAndSetSemantics {},
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (expanded) {
+                Text(
+                    stringResource(R.string.parser_languages),
+                    Modifier.padding(start = 6.dp, top = 4.dp, bottom = 5.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                MultiChips(
+                    options = MultilingualEventParser.LANGUAGES.map {
+                        it to stringResource(languageLabels.getValue(it))
+                    },
+                    selected = enabled,
+                    // последний включённый язык выключить нельзя
+                    onToggle = { lang ->
+                        val next = if (lang in enabled) enabled - lang else enabled + lang
+                        if (next.isNotEmpty()) onSelectLanguages(next)
+                    },
+                )
+                Text(
+                    stringResource(R.string.parser_languages_hint),
+                    Modifier.padding(start = 6.dp, top = 7.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+
+                Text(
+                    stringResource(R.string.activity_window),
+                    Modifier.padding(start = 6.dp, top = 12.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                // слайдер живёт в локальном состоянии, в стор — по отпусканию;
+                // без remember-ключей: эмиссия DataStore после записи приносила
+                // бы старое значение под палец при серийной подстройке
+                var range by remember {
+                    mutableStateOf(windowStart.toFloat()..windowEnd.toFloat())
+                }
+                val start = range.start.roundToInt()
+                val end = range.endInclusive.roundToInt()
+                // цифры над шкалой: под ней их закрывают пальцы при перетаскивании
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 6.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(
+                        "$start:00", style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        "$end:00", style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                RangeSlider(
+                    value = range,
+                    onValueChange = { r ->
+                        val s = r.start.roundToInt()
+                        val e = r.endInclusive.roundToInt()
+                        if (e - s >= 1) range = s.toFloat()..e.toFloat()  // окно минимум в час
+                    },
+                    valueRange = 0f..24f,
+                    steps = 23,
+                    onValueChangeFinished = { onSetWindow(start, end) },
+                    modifier = Modifier
+                        .padding(horizontal = 6.dp)
+                        // TalkBack: часы, а не проценты диапазона
+                        .semantics { stateDescription = "$start:00 – $end:00" },
+                )
+                // живые примеры — тем же правилом, что ядро (resolveTwelveHour)
+                Text(
+                    stringResource(
+                        R.string.activity_window_examples,
+                        resolveTwelveHour(9, start until end),
+                        resolveTwelveHour(7, start until end),
+                    ),
+                    Modifier.padding(start = 6.dp, top = 4.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Text(
+                    stringResource(R.string.activity_window_hint),
+                    Modifier.padding(start = 6.dp, top = 4.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+private val languageLabels = mapOf(
+    "ru" to R.string.language_russian, "en" to R.string.language_english,
+    "it" to R.string.language_italian, "es" to R.string.language_spanish,
+    "de" to R.string.language_german,
+)
+
+/** Мультивыбор чипами — как [OptionChips], но с независимыми переключателями. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun MultiChips(
+    options: List<Pair<String, String>>,
+    selected: Set<String>,
+    onToggle: (String) -> Unit,
+) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        options.forEach { (value, label) ->
+            FilterChip(
+                selected = value in selected,
+                onClick = { onToggle(value) },
+                label = { Text(label, maxLines = 1) },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                ),
             )
         }
     }
@@ -269,7 +490,10 @@ private fun AboutFooter() {
                         "SayWhen ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
                     ),
                 )
-                // подтверждение копирования на 13+ показывает система
+                // подтверждение копирования на 13+ показывает система, раньше — мы
+                if (Build.VERSION.SDK_INT < 33) {
+                    Toast.makeText(context, R.string.version_copied, Toast.LENGTH_SHORT).show()
+                }
             },
             style = MaterialTheme.typography.bodySmall,
             color = muted,
@@ -347,21 +571,24 @@ private fun Section(labelRes: Int, content: @Composable ColumnScope.() -> Unit) 
     }
 }
 
-/** Взаимоисключающая тройка-четвёрка; выбранное — контрастный primary. */
+/** Чипы-опции с переносом строк: шесть опций в сегмент-ряд не помещаются. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun <T> SegmentedRow(options: List<Pair<T, String>>, selected: T, onSelect: (T) -> Unit) {
-    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-        options.forEachIndexed { i, (value, label) ->
-            SegmentedButton(
+private fun <T> OptionChips(
+    options: List<Pair<T, String>>,
+    selected: T,
+    onSelect: (T) -> Unit,
+) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        options.forEach { (value, label) ->
+            FilterChip(
                 selected = selected == value,
                 onClick = { onSelect(value) },
-                shape = SegmentedButtonDefaults.itemShape(i, options.size),
-                colors = SegmentedButtonDefaults.colors(
-                    activeContainerColor = MaterialTheme.colorScheme.primary,
-                    activeContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
-                icon = {},  // галочка съедает ширину, выбор и так виден заливкой
                 label = { Text(label, maxLines = 1) },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                ),
             )
         }
     }
@@ -428,7 +655,13 @@ private fun ThemeTile(
         ) {
             Box(Modifier.fillMaxSize().padding(0.5.dp), content = { swatch() })
         }
-        Text(stringResource(labelRes), style = MaterialTheme.typography.labelMedium, maxLines = 1)
+        // две строки на крупном шрифте — перенос честнее обрезания («Как в систе…»)
+        Text(
+            stringResource(labelRes),
+            style = MaterialTheme.typography.labelMedium,
+            maxLines = 2,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 
@@ -525,8 +758,9 @@ private fun CalendarPickRow(
             .selectable(selected = selected, role = Role.RadioButton, onClick = onSelect),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // пассивный: цель фокуса — вся строка, иначе она двоится
-        RadioButton(selected = selected, onClick = null)
+        // пассивный: цель фокуса — вся строка, иначе она двоится; без onClick
+        // радио не получает зону 48dp, поэтому отступ от соседей — свой
+        RadioButton(selected = selected, onClick = null, modifier = Modifier.padding(end = 8.dp))
         if (color != null) {
             Box(
                 Modifier.padding(end = 8.dp).size(10.dp)

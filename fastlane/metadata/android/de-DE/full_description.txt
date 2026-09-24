@@ -1,0 +1,17 @@
+Keine Formulare, keine Felder. Sag einfach wann.
+
+Schreib den Termin so, wie du ihn sagen würdest, auf Deutsch, Englisch, Russisch, Italienisch oder Spanisch:
+
+• Sport jeden Dienstag und Freitag um 9
+• Kino morgen um 11 für anderthalb Stunden !10
+• Zahnarzt am 3. Juni um 12:30
+
+SayWhen analysiert den Satz beim Tippen: Datum, Uhrzeit, Dauer, Wiederholung, eine „!10“-Erinnerung. Es zeigt live, was es verstanden hat, und schreibt den Termin direkt in den Kalender deiner Wahl. Widget antippen, tippen, fertig.
+
+Privat durch Konstruktion:
+
+• Keine Registrierung, kein Server, keine Analytics, keine Identifier
+• Überhaupt kein Netzwerkzugriff — die App deklariert nicht einmal die INTERNET-Berechtigung
+• Insgesamt zwei Berechtigungen: Kalenderliste lesen und den gewünschten Termin schreiben
+
+Termine gehen nur in deinen Kalender und nirgendwo sonst. Gehört der Kalender zu einem synchronisierten Konto, lädt dessen eigener Sync den Termin hoch — genau wie bei jeder anderen Kalender-App.

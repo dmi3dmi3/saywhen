@@ -40,6 +40,14 @@ internal fun ordinalMonthlyRecurrence(ord: Int, day: DayOfWeek, range: IntRange)
     anchorDays = setOf(day),
 )
 
+/** Шаг повтора из FREQ и интервала — RRULE-знание, общее для трансляторов. */
+internal fun periodOf(freq: String, n: Int): Period = when (freq) {
+    "DAILY" -> Period.ofDays(n)
+    "WEEKLY" -> Period.ofWeeks(n)
+    "MONTHLY" -> Period.ofMonths(n)
+    else -> Period.ofYears(n)
+}
+
 /**
  * Половина суток как подсказка 12-часовому кругу: «tonight at 8» → вечер,
  * «every morning at 7» → утро. Семантика 12 — как у явных «утра/вечера»:
@@ -47,6 +55,8 @@ internal fun ordinalMonthlyRecurrence(ord: Int, day: DayOfWeek, range: IntRange)
  */
 internal enum class DayHalf {
     MORNING { override fun resolve(h: Int) = if (h == 12) 0 else h },
+    // «днём/afternoon/pomeriggio/tarde/nachmittag»: 12 — полдень, не полночь
+    AFTERNOON { override fun resolve(h: Int) = if (h < 12) h + 12 else 12 },
     EVENING { override fun resolve(h: Int) = if (h < 12) h + 12 else 0 };
     abstract fun resolve(h: Int): Int
 }
@@ -81,8 +91,12 @@ internal fun dateRangeCandidate(
     return DateCandidate(start, range, endDate = end)
 }
 
-// «23-28» — токенайзер держит пару дней с дефисом одним токеном
-private val dayPairPattern = Regex("""(\d{1,2})-(\d{1,2})""")
+/** Явный год «2027» — четыре цифры разумного горизонта; иначе null. */
+internal fun yearToken(s: String?): Int? =
+    s?.takeIf { it.length == 4 }?.toIntOrNull()?.takeIf { it in 1970..2100 }
+
+// «23-28» / «23 - 28» / «13. - 15.» — токенайзер держит пару дней одним токеном
+private val dayPairPattern = Regex("""(\d{1,2})\.?\s*-\s*(\d{1,2})\.?""")
 
 /** Пара дней «23-28» из одного токена; вне 1..31 — не пара. */
 internal fun dayPair(s: String?): Pair<Int, Int>? {
@@ -104,6 +118,13 @@ internal data class TimeCandidate(
     val duration: Duration?,
     val tokens: IntRange,
     val twelveHour: Boolean = false,  // час круга 1..12 без уточнения → пара {h, h+12}
+    val confidence: Confidence = Confidence.EXPLICIT,
+)
+
+/** Кандидат в напоминание: минуты до начала («!10», «напомни за 10 минут»). */
+internal data class ReminderCandidate(
+    val minutes: Int,
+    val tokens: IntRange,
     val confidence: Confidence = Confidence.EXPLICIT,
 )
 

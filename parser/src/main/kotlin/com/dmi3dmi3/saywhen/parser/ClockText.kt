@@ -13,7 +13,7 @@ internal object ClockText {
      */
     fun gluedInterval(s: String): Pair<LocalTime, Duration>? {
         if ('-' !in s) return null
-        val parts = s.split("-")
+        val parts = s.split("-").map { it.trim() }
         if (parts.size != 2 || parts.none { ':' in it }) return null
         val from = clock(parts[0]) ?: return null
         val to = clock(parts[1]) ?: return null
@@ -26,6 +26,16 @@ internal object ClockText {
     /** Минуты отдельным токеном («в 19 30», «11 00»): строго две цифры 00–59. */
     fun pairMinutes(s: String?): Int? =
         s?.takeIf { it.length == 2 }?.toIntOrNull()?.takeIf { it in 0..59 }
+
+    /**
+     * «19.30» → 19:30 — точка как разделитель времени. Только для явного
+     * контекста предлога («в»/"at"): голая пара с точкой — что угодно
+     * («3.08» — дата), временем сама по себе не становится.
+     */
+    fun dottedClock(s: String?): LocalTime? =
+        s?.takeIf { dottedTime.matches(it) }?.let { clock(it.replace('.', ':')) }
+
+    private val dottedTime = Regex("""\d{1,2}\.\d{2}""")
 
     /** «15» → 15:00, «9:30» → 9:30; иначе null. Минуты — строго две цифры. */
     fun clock(s: String?): LocalTime? {

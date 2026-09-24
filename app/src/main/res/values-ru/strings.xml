@@ -21,28 +21,33 @@
     <string name="date_locale">ru</string>
     <string name="summary_date_pattern">EEE, d MMM</string>
     <string name="summary_time_pattern">H:mm</string>
+    <string name="summary_reminder_at_event">🔔 в начале</string>
+    <string name="summary_reminder_before">🔔 за %1$s</string>
 
     <!-- Главный экран: hero и действия (задача 18) -->
     <string name="hero_slogan">Без форм и полей. Просто скажи когда.</string>
     <string name="hero_description">Одна фраза — и событие в календаре.</string>
     <string name="example_phrase_1">Спорт каждый вторник и пятницу в 9</string>
-    <string name="example_phrase_2">Кино завтра в 11 на полтора часа</string>
+    <string name="example_phrase_2">Кино завтра в 11 на полтора часа !10</string>
     <string name="action_add_widget">Добавить виджет</string>
     <string name="action_try">Попробовать</string>
     <string name="action_grant">Разрешить</string>
     <string name="action_app_settings">Настройки приложения</string>
     <string name="action_add_account">Добавить аккаунт</string>
-    <string name="settings_no_calendars">Календари не найдены — добавь календарный аккаунт</string>
+    <string name="settings_no_calendars">Календари не найдены — добавьте календарный аккаунт</string>
 
     <!-- Настройки -->
-    <string name="settings_title">Настройки</string>
     <string name="settings_calendar">Календарь</string>
     <string name="settings_calendar_auto">Автоматически (основной)</string>
-    <string name="settings_calendar_permission">Дай доступ к календарю, чтобы выбрать конкретный</string>
-    <string name="settings_duration">Длительность по умолчанию</string>
-    <string name="settings_behavior">Поведение</string>
-    <string name="setting_nod">Кивок ярлычка при создании</string>
-    <string name="setting_haptic">Вибрация при создании</string>
+    <string name="settings_calendar_permission">Дайте доступ к календарю, чтобы выбрать конкретный</string>
+    <string name="settings_duration">Длительность</string>
+    <string name="settings_reminder">Напоминание</string>
+    <string name="reminder_off">Выкл</string>
+    <string name="reminder_at_event">В начале</string>
+    <string name="reminder_hint">Для одного события — «!10» прямо во фразе.</string>
+    <string name="settings_behavior">При создании</string>
+    <string name="setting_nod">Кивок ярлычка</string>
+    <string name="setting_haptic">Вибрация</string>
     <!-- onClickLabel для TalkBack: «Дважды коснитесь, чтобы …» -->
     <string name="action_close">закрыть</string>
     <string name="action_open_settings">открыть настройки</string>
@@ -56,11 +61,20 @@
     <string name="about_privacy_details">подробнее о приватности</string>
     <string name="about_copy_version">скопировать версию</string>
     <string name="settings_theme">Тема</string>
-    <string name="theme_system">Как в системе</string>
+    <string name="theme_system">Системная</string>
     <string name="theme_light">Светлая</string>
     <string name="theme_dark">Тёмная</string>
     <string name="settings_language">Язык</string>
-    <string name="language_system">Как в системе</string>
+    <string name="language_system">Системный</string>
+    <string name="settings_advanced">Расширенные</string>
+    <string name="parser_languages">Языки распознавания</string>
+    <string name="parser_languages_hint">По умолчанию — язык интерфейса и английский.</string>
+    <string name="activity_window">Окно активности</string>
+    <string name="activity_window_examples">«в 9» → %1$d:00 · «в 7» → %2$d:00</string>
+    <string name="activity_window_hint">Когда время можно понять неоднозначно, побеждает попавшее в окно.</string>
+    <string name="a11y_expanded">развёрнуто</string>
+    <string name="a11y_collapsed">свёрнуто</string>
+    <string name="version_copied">Версия скопирована</string>
     <string name="unit_hours">ч</string>
     <string name="unit_minutes">мин</string>
 </resources>

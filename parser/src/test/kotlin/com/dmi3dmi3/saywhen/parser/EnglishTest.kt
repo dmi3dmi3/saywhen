@@ -180,6 +180,7 @@ class EnglishTest {
     @Test
     fun `every N units — интервал`() {
         assertEquals("FREQ=WEEKLY;INTERVAL=2", parser.parse("backup every 2 weeks", now).rrule)
+        assertEquals("FREQ=WEEKLY;INTERVAL=2", parser.parse("backup every two weeks", now).rrule)
     }
 
     @Test
@@ -353,6 +354,115 @@ class EnglishTest {
         )
         // без «of the month» — не месячный повтор (двусмысленно)
         assertNull(parser.parse("brunch every second sunday", now).rrule)
+    }
+
+    @Test
+    fun `день недели плюс следующая неделя`() {
+        assertEquals(LocalDate.of(2026, 7, 29), parser.parse("wednesday next week", now).start.toLocalDate())
+        assertEquals(LocalDate.of(2026, 7, 29), parser.parse("wednesday of next week", now).start.toLocalDate())
+        assertEquals(LocalDate.of(2026, 7, 21), parser.parse("tuesday of this week", now).start.toLocalDate())
+    }
+
+    @Test
+    fun `порядковые даты с the и of`() {
+        assertEquals(LocalDate.of(2027, 3, 1), parser.parse("rent the 1st of march", now).start.toLocalDate())
+        assertEquals(LocalDate.of(2027, 3, 1), parser.parse("rent 1st of march", now).start.toLocalDate())
+        assertEquals(LocalDate.of(2027, 3, 1), parser.parse("rent march the 1st", now).start.toLocalDate())
+    }
+
+    @Test
+    fun `половина суток после относительного дня`() {
+        assertEquals(20, parser.parse("call tomorrow evening at 8", now).start.hour)
+        assertEquals(20, parser.parse("call this evening at 8", now).start.hour)
+        assertEquals(9, parser.parse("run tomorrow morning at 9", now).start.hour)
+    }
+
+    @Test
+    fun `in an hour и in N units — офсет от сейчас`() {
+        assertStart("call in 2 hours", ZonedDateTime.of(2026, 7, 21, 16, 0, 0, 0, now.zone))
+        assertStart("in an hour", ZonedDateTime.of(2026, 7, 21, 15, 0, 0, 0, now.zone))
+        assertStart("ping in 30 minutes", ZonedDateTime.of(2026, 7, 21, 14, 30, 0, 0, now.zone))
+    }
+
+    @Test
+    fun `in a year — годовой юнит смещения`() {
+        assertEquals(LocalDate.of(2027, 7, 21), parser.parse("checkup in a year", now).start.toLocalDate())
+        assertEquals(LocalDate.of(2028, 7, 21), parser.parse("in 2 years", now).start.toLocalDate())
+    }
+
+    @Test
+    fun `диапазон с суффиксами и of`() {
+        val e = parser.parse("camp from 13th to 15th of august", now)
+        assertEquals(LocalDate.of(2026, 8, 13), e.start.toLocalDate())
+        assertEquals(Duration.ofDays(3), e.duration)
+        assertTrue(e.allDay)
+    }
+
+    @Test
+    fun `периоды без дня — не дата и не повтор`() {
+        for (phrase in listOf("plans next week", "report this month", "market this weekend")) {
+            val e = parser.parse(phrase, now)
+            assertTrue(phrase, e.allDay)
+            assertEquals(phrase, LocalDate.of(2026, 7, 21), e.start.toLocalDate())
+            assertNull(phrase, e.rrule)
+        }
+    }
+
+    @Test
+    fun `ведущий день недели уступает календарной дате`() {
+        val e = parser.parse("Monday, Feb 18", now)
+        assertEquals(LocalDate.of(2027, 2, 18), e.start.toLocalDate())
+        assertEquals("Event", e.title)
+    }
+
+    @Test
+    fun `слэш-даты — не время`() {
+        assertTrue(parser.parse("call 10/31/74", now).allDay)
+    }
+
+    @Test
+    fun `явный год — берём буквально в обоих порядках`() {
+        assertEquals(
+            LocalDate.of(2027, 6, 3),
+            parser.parse("launch june 3 2027", now).start.toLocalDate(),
+        )
+        assertEquals(
+            LocalDate.of(2027, 6, 3),
+            parser.parse("launch 3 june 2027", now).start.toLocalDate(),
+        )
+        assertEquals(
+            LocalDate.of(2020, 6, 3),
+            parser.parse("reunion june 3 2020", now).start.toLocalDate(),
+        )
+    }
+
+    @Test
+    fun `десятичные часы — for 1,5 hours и склейка`() {
+        assertEquals(90, parser.parse("call at 4 for 1.5 hours", now).duration!!.toMinutes())
+        assertEquals(150, parser.parse("drive at 9 for 2.5 hrs", now).duration!!.toMinutes())
+        assertEquals(90, parser.parse("sync at 3 1.5h", now).duration!!.toMinutes())
+    }
+
+    @Test
+    fun `точка как разделитель времени после at`() {
+        assertStart("meeting at 7.30", ZonedDateTime.of(2026, 7, 21, 19, 30, 0, 0, now.zone))
+    }
+
+    @Test
+    fun `on tuesdays — множественный день недели`() {
+        assertEquals("FREQ=WEEKLY;BYDAY=TU", parser.parse("standup on tuesdays", now).rrule)
+        assertEquals("FREQ=WEEKLY;BYDAY=MO,FR", parser.parse("gym on mondays and fridays", now).rrule)
+    }
+
+    @Test
+    fun `every weekend`() {
+        assertEquals("FREQ=WEEKLY;BYDAY=SA,SU", parser.parse("hiking every weekend", now).rrule)
+    }
+
+    @Test
+    fun `once a week — частота без every`() {
+        assertEquals("FREQ=WEEKLY", parser.parse("cleanup once a week", now).rrule)
+        assertEquals("FREQ=MONTHLY", parser.parse("report once a month", now).rrule)
     }
 
     @Test

@@ -26,6 +26,27 @@ class TokenizerTest {
     }
 
     @Test
+    fun `десятичное число — один токен, с единицей и без`() {
+        assertEquals(listOf("на", "1,5", "часа"), Tokenizer.tokenize("на 1,5 часа").map { it.text })
+        assertEquals(listOf("sync", "1.5h"), Tokenizer.tokenize("sync 1.5h").map { it.text })
+        assertEquals(listOf("отчёт", "3.08"), Tokenizer.tokenize("отчёт 3.08").map { it.text })
+    }
+
+    @Test
+    fun `точечный дефис дней — один токен`() {
+        assertEquals(listOf("13. - 15.", "Juli"), Tokenizer.tokenize("13. - 15. Juli").map { it.text })
+    }
+
+    @Test
+    fun `бэнг вплотную к числу — один токен, иначе пунктуация`() {
+        assertEquals(listOf("звонок", "!10"), Tokenizer.tokenize("звонок !10").map { it.text })
+        assertEquals(listOf("sync", "!1h"), Tokenizer.tokenize("sync !1h").map { it.text })
+        // бэнг после слова или числа — не токен: «купить корм!», «в 10!»
+        assertEquals(listOf("купить", "корм"), Tokenizer.tokenize("купить корм!").map { it.text })
+        assertEquals(listOf("в", "10"), Tokenizer.tokenize("в 10!").map { it.text })
+    }
+
+    @Test
     fun `дефисные слова — один токен`() {
         val tokens = Tokenizer.tokenize("что-нибудь купить")
         assertEquals(listOf("что-нибудь", "купить"), tokens.map { it.text })

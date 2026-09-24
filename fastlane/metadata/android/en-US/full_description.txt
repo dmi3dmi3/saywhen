@@ -1,17 +1,17 @@
 No forms, no fields. Just say when.
 
-Type an event the way you'd say it, in English or Russian:
+Type an event the way you'd say it, in English, Russian, Italian, Spanish, or German:
 
 • Gym every tuesday and friday at 9
-• Movie tomorrow at 11 for an hour and a half
+• Movie tomorrow at 11 for 1.5h !10
 • Dentist june 3 at 12:30
 
-SayWhen parses the phrase as you type — date, time, duration, recurrence — shows a live preview of what it understood, and writes the event straight to the calendar you chose. Tap the home-screen widget, type, done.
+SayWhen parses the phrase as you type: date, time, duration, recurrence, a “!10” reminder. It shows a live preview of what it understood and writes the event straight to the calendar you chose. Tap the home-screen widget, type, done.
 
 Private by construction:
 
-• No account of its own, no server, no analytics, no identifiers
+• No sign-up, no server, no analytics, no identifiers
 • No network access at all — the app doesn't even declare the INTERNET permission
 • Two permissions total: read your calendar list, write the event you asked for
 
-Events go to your calendar — nowhere else. If your calendar belongs to a synced account, its own sync engine uploads the event, exactly as with any other calendar app.
+Events go to your calendar and nowhere else. If your calendar belongs to a synced account, its own sync engine uploads the event, exactly as with any other calendar app.

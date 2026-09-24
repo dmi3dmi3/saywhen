@@ -1,5 +1,6 @@
 package com.dmi3dmi3.saywhen.parser.ru
 
+import com.dmi3dmi3.saywhen.parser.CompactReminder
 import com.dmi3dmi3.saywhen.parser.Extraction
 import com.dmi3dmi3.saywhen.parser.Token
 import com.dmi3dmi3.saywhen.parser.Translator
@@ -28,11 +29,20 @@ internal object RussianTranslator : Translator {
             r.extraTokens.forEach(::take)
         }
 
+        // напоминание — раньше дат/времени, чтобы «за 10 минут» не растащили
+        // другие правила; компакт и вербоз вместе — последняя форма побеждает
+        val reminder = listOfNotNull(
+            CompactReminder.find(tokens, used, setOf("ч")),
+            ReminderRules.find(tokens, used),
+        ).maxByOrNull { it.tokens.last }
+        reminder?.let { take(it.tokens) }
+
         // дата: первый кандидат побеждает, остальные остаются текстом
         val date = DateRules.findAll(tokens, now, used).firstOrNull()
         date?.let { take(it.tokens) }
 
         val time = TimeRules.find(tokens, used)
+            ?: TimeRules.offsetTime(tokens, used, now)     // «через 2 часа»
             ?: TimeRules.bareHourAfterClaim(tokens, used)  // «завтра 11 планёрка»
         time?.let { take(it.tokens) }
 
@@ -40,6 +50,6 @@ internal object RussianTranslator : Translator {
         val duration =
             if (time != null && time.duration == null) DurationRules.find(tokens, used) else null
 
-        return Extraction(recurrence = rec, date = date, time = time, duration = duration)
+        return Extraction(recurrence = rec, date = date, time = time, duration = duration, reminder = reminder)
     }
 }

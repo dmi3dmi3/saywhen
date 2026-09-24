@@ -1,0 +1,12 @@
+⚠️ Neuer Signaturschlüssel.
+Dieses Update lässt sich nicht über die von F-Droid signierte Version installieren. Deinstalliere SayWhen und installiere es neu, das ist einmalig nötig.
+Deine Termine bleiben erhalten: Sie liegen im Kalender, nicht in der App. Die Einstellungen der App musst du dagegen neu setzen.
+Warum: F-Droid prüft jetzt selbst, dass unser Build bitgenau reproduzierbar ist, und liefert das vom Entwickler signierte APK aus. Es ist dieselbe Signatur wie beim Build auf GitHub, du kannst die App also aus einer Quelle installieren und aus der anderen aktualisieren.
+
+In Version 3.0 unterstützt die App fünf Sprachen und Erinnerungen.
+
+• Italienisch, Spanisch und Deutsch. Sätze in diesen Sprachen werden erkannt, die Oberfläche ist übersetzt.
+• Erinnerungen. Schreib sie direkt in den Satz: „zahnarzt morgen um 15 !10“ oder „erinnere mich 10 minuten vorher“. Eine feste Erinnerung für alle Termine stellst du in den Einstellungen ein.
+• Einstellungen neu aufgebaut: Kalender, Dauer, Erinnerung und Themes.
+• Die erweiterten Einstellungen sind für Sonderfälle da. Erkennungssprachen: die Sprache der Oberfläche und Englisch sind von Anfang an aktiv, die übrigen schaltest du dazu, wenn du in ihnen schreibst. Aktive Stunden: die Grenzen deines Tages, damit ein blankes „um 9“ als Vormittag und nicht als Abend gelesen wird.
+• Russisch und Englisch verstehen mehr Alltagsformulierungen, einige Fehler beim Erkennen sind behoben.

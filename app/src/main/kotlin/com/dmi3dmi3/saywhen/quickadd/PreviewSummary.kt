@@ -2,6 +2,7 @@ package com.dmi3dmi3.saywhen.quickadd
 
 import com.dmi3dmi3.saywhen.parser.ParsedEvent
 import com.dmi3dmi3.saywhen.parser.TokenMatch
+import com.dmi3dmi3.saywhen.settings.durationLabel
 import java.time.Duration
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -26,12 +27,25 @@ internal data class SummaryLabels(
     val locale: Locale,
     val datePattern: String,   // ru «EEE, d MMM» / en «EEE, MMM d»
     val timePattern: String,   // ru «H:mm» / en «h:mm a»
+    val hourUnit: String,      // «ч» / "h" — для «🔔 за 1 ч 30 мин»
+    val minuteUnit: String,
+    val reminderAtEvent: String,   // «🔔 в начале»
+    val reminderBefore: String,    // шаблон с %s: «🔔 за %s» / "🔔 %s before"
 )
+
+/**
+ * Действующее напоминание (задача 29): текст побеждает дефолт из настроек;
+ * all-day — не ставим вовсе (DTSTART — полночь UTC, «за 10 минут» — звонок
+ * среди ночи). Единственное место гейта — им пользуются и превью, и запись.
+ */
+internal fun effectiveReminder(event: ParsedEvent, defaultMinutes: Int?): Int? =
+    if (event.allDay) null else event.reminderMinutes ?: defaultMinutes
 
 internal fun previewSummary(
     event: ParsedEvent,
     text: String,
     defaultDuration: Duration,
+    defaultReminderMinutes: Int?,
     labels: SummaryLabels,
     today: LocalDate,
 ): EventSummary {
@@ -64,6 +78,19 @@ internal fun previewSummary(
         segments += SummarySegment(
             "${event.start.format(timeFmt)}–${end.format(timeFmt)}",
             isDefault = false,
+        )
+    }
+
+    // напоминание — только когда реально будет (из текста или дефолта
+    // настроек); раньше повтора: повтор цитирует слова пользователя и может
+    // быть длинным — под многоточие двух строк должен уходить он, не 🔔
+    effectiveReminder(event, defaultReminderMinutes)?.let { minutes ->
+        segments += SummarySegment(
+            if (minutes == 0) labels.reminderAtEvent
+            else labels.reminderBefore.format(
+                durationLabel(minutes, labels.hourUnit, labels.minuteUnit),
+            ),
+            isDefault = event.reminderMinutes == null,
         )
     }
 

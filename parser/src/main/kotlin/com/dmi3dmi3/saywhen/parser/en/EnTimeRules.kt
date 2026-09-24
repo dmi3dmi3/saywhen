@@ -4,8 +4,11 @@ import com.dmi3dmi3.saywhen.parser.ClockText
 import com.dmi3dmi3.saywhen.parser.Confidence
 import com.dmi3dmi3.saywhen.parser.TimeCandidate
 import com.dmi3dmi3.saywhen.parser.Token
+import com.dmi3dmi3.saywhen.parser.bareHourAfterClaim
+import com.dmi3dmi3.saywhen.parser.free
 import java.time.Duration
 import java.time.LocalTime
+import java.time.ZonedDateTime
 
 internal object EnTimeRules {
 
@@ -79,11 +82,11 @@ internal object EnTimeRules {
             }
         }
 
-        // "at 5" / "at 5:30" / "at 5pm" / "at five"
+        // "at 5" / "at 5:30" / "at 7.30" / "at 5pm" / "at five"
         if (t == "at" && free(used, i..i + 1, tokens.size)) {
             val raw = tokens.getOrNull(i + 1)?.lower
             amPm(raw)?.let { return TimeCandidate(it, null, i..i + 1) }
-            ClockText.clock(raw)?.let { time ->
+            (ClockText.clock(raw) ?: ClockText.dottedClock(raw))?.let { time ->
                 if (raw != null && ':' !in raw) {
                     // "at 11 30" — минуты отдельным токеном
                     val mm = ClockText.pairMinutes(tokens.getOrNull(i + 2)?.lower)
@@ -114,15 +117,35 @@ internal object EnTimeRules {
         return null
     }
 
-    /** Голый час 0–23 сразу после распознанного куска — "tomorrow 11 standup". */
-    fun bareHourAfterClaim(tokens: List<Token>, used: BooleanArray): TimeCandidate? {
-        for (i in 1 until tokens.size) {
-            if (used[i] || !used[i - 1]) continue
-            val hour = tokens[i].lower.takeIf { it.length <= 2 }?.toIntOrNull() ?: continue
-            if (hour in 0..23) return refine(tokens, used, LocalTime.of(hour, 0), i..i, confidence = Confidence.WEAK)
+    private val offsetHours = setOf("hour", "hours", "hr", "hrs")
+    private val offsetMinutes = setOf("minute", "minutes", "min", "mins")
+
+    /**
+     * "in an hour / in 2 hours / in 30 minutes" — офсет от «сейчас».
+     * Перекат за полночь делает сборка: прошедшее время уходит на завтра.
+     */
+    fun offsetTime(tokens: List<Token>, used: BooleanArray, now: ZonedDateTime): TimeCandidate? {
+        for (i in tokens.indices) {
+            if (used[i] || tokens[i].lower != "in") continue
+            val next = tokens.getOrNull(i + 1)?.lower ?: continue
+            val base = now.toLocalTime().withSecond(0).withNano(0)
+            val n = next.toLongOrNull()?.takeIf { it in 1..999 }
+                ?: if (next == "a" || next == "an") 1L else continue
+            val time = when (tokens.getOrNull(i + 2)?.lower) {
+                in offsetHours -> base.plusHours(n)
+                in offsetMinutes -> base.plusMinutes(n)
+                else -> null
+            } ?: continue
+            if (free(used, i..i + 2, tokens.size)) return TimeCandidate(time, null, i..i + 2)
         }
         return null
     }
+
+    /** Голый час после распознанного куска — общий цикл в ядре, доводка наша. */
+    fun bareHourAfterClaim(tokens: List<Token>, used: BooleanArray): TimeCandidate? =
+        bareHourAfterClaim(tokens, used) { time, range ->
+            refine(tokens, used, time, range, confidence = Confidence.WEAK)
+        }
 
     /** Доводка часа круга: маркер am/pm следом снимает пару и приклеивается к матчу. */
     private fun refine(
@@ -167,7 +190,4 @@ internal object EnTimeRules {
         if (d < Duration.ZERO) d = d.plusHours(24)
         return d
     }
-
-    private fun free(used: BooleanArray, range: IntRange, size: Int): Boolean =
-        range.last < size && range.all { !used[it] }
 }

@@ -2,9 +2,11 @@ package com.dmi3dmi3.saywhen.parser.ru
 
 import com.dmi3dmi3.saywhen.parser.Confidence
 import com.dmi3dmi3.saywhen.parser.DateCandidate
+import com.dmi3dmi3.saywhen.parser.DayHalf
 import com.dmi3dmi3.saywhen.parser.Token
 import com.dmi3dmi3.saywhen.parser.dateRangeCandidate
 import com.dmi3dmi3.saywhen.parser.dayPair
+import com.dmi3dmi3.saywhen.parser.yearToken
 import java.time.DateTimeException
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -53,7 +55,40 @@ internal object DateRules {
         "день" to ChronoUnit.DAYS, "дня" to ChronoUnit.DAYS, "дней" to ChronoUnit.DAYS,
         "неделю" to ChronoUnit.WEEKS, "недели" to ChronoUnit.WEEKS, "недель" to ChronoUnit.WEEKS,
         "месяц" to ChronoUnit.MONTHS, "месяца" to ChronoUnit.MONTHS, "месяцев" to ChronoUnit.MONTHS,
+        "год" to ChronoUnit.YEARS, "года" to ChronoUnit.YEARS, "лет" to ChronoUnit.YEARS,
     )
+
+    // «завтра вечером» — половина суток приклеивается к дню хинтом для часа
+    private val dayHalves = mapOf(
+        "утром" to DayHalf.MORNING, "вечером" to DayHalf.EVENING,
+        "ночью" to DayHalf.EVENING, "днём" to DayHalf.AFTERNOON, "днем" to DayHalf.AFTERNOON,
+    )
+
+    // порядковый день: «восемнадцатое/восемнадцатого [февраля]», составные
+    // «двадцать четвёртое»; оба падежа
+    private val ordinalUnits = mapOf(
+        "первое" to 1, "первого" to 1, "второе" to 2, "второго" to 2,
+        "третье" to 3, "третьего" to 3,
+        "четвёртое" to 4, "четвертое" to 4, "четвёртого" to 4, "четвертого" to 4,
+        "пятое" to 5, "пятого" to 5, "шестое" to 6, "шестого" to 6,
+        "седьмое" to 7, "седьмого" to 7, "восьмое" to 8, "восьмого" to 8,
+        "девятое" to 9, "девятого" to 9, "десятое" to 10, "десятого" to 10,
+        "одиннадцатое" to 11, "одиннадцатого" to 11,
+        "двенадцатое" to 12, "двенадцатого" to 12,
+        "тринадцатое" to 13, "тринадцатого" to 13,
+        "четырнадцатое" to 14, "четырнадцатого" to 14,
+        "пятнадцатое" to 15, "пятнадцатого" to 15,
+        "шестнадцатое" to 16, "шестнадцатого" to 16,
+        "семнадцатое" to 17, "семнадцатого" to 17,
+        "восемнадцатое" to 18, "восемнадцатого" to 18,
+        "девятнадцатое" to 19, "девятнадцатого" to 19,
+        "двадцатое" to 20, "двадцатого" to 20,
+        "тридцатое" to 30, "тридцатого" to 30,
+    )
+    private val ordinalTens = mapOf("двадцать" to 20, "тридцать" to 30)
+
+    // «18-е февраля», «18-го» — цифро-суффикс, токенайзер держит дефис
+    private val daySuffix = Regex("""(\d{1,2})-(?:е|ое|го|ого)""")
 
     /** Все кандидаты по свободным токенам в порядке появления. */
     fun findAll(tokens: List<Token>, now: ZonedDateTime, used: BooleanArray): List<DateCandidate> {
@@ -78,19 +113,17 @@ internal object DateRules {
         // диапазон — раньше одиночной даты: иначе «23 августа по …» съелось бы началом
         matchRange(tokens, i, today)?.let { return it }
 
-        relative[t]?.let { return DateCandidate(today.plusDays(it), i..i) }
+        relative[t]?.let { shift ->
+            dayHalves[tokens.getOrNull(i + 1)?.lower]?.let { half ->
+                return DateCandidate(today.plusDays(shift), i..i + 1, dayHalf = half)
+            }
+            return DateCandidate(today.plusDays(shift), i..i)
+        }
 
         matchWeekday(tokens, i, today)?.let { return it }
 
-        // «3 августа» — день + месяц в родительном
-        val day = t.toIntOrNull()
-        if (day != null && day in 1..31) {
-            val month = months[tokens.getOrNull(i + 1)?.lower] ?: return null
-            val thisYear = dateOrNull(today.year, month, day)
-            val date = if (thisYear != null && !thisYear.isBefore(today)) thisYear
-                       else dateOrNull(today.year + 1, month, day)
-            return date?.let { DateCandidate(it, i..i + 1) }
-        }
+        // «3 августа» / «восемнадцатое февраля» — день + месяц в родительном
+        calendarAt(tokens, i, today)?.let { return it }
 
         // «через [N] день/неделю/месяц»
         if (t == "через") {
@@ -130,6 +163,36 @@ internal object DateRules {
         return dateRangeCandidate(today, startDay, startMonth ?: endMonth, endDay, endMonth, i..j + 2)
     }
 
+    /** День с позиции k — цифра, «18-е/18-го» или словами; (день, последний токен). */
+    private fun dayAt(tokens: List<Token>, k: Int): Pair<Int, Int>? {
+        val t = tokens.getOrNull(k)?.lower ?: return null
+        t.toIntOrNull()?.let { return (it to k).takeIf { p -> p.first in 1..31 } }
+        daySuffix.matchEntire(t)?.let { m ->
+            return (m.groupValues[1].toInt() to k).takeIf { p -> p.first in 1..31 }
+        }
+        ordinalTens[t]?.let { tens ->
+            ordinalUnits[tokens.getOrNull(k + 1)?.lower]?.takeIf { it in 1..9 }
+                ?.let { return (tens + it) to (k + 1) }
+        }
+        ordinalUnits[t]?.let { return it to k }
+        return null
+    }
+
+    /** «3 августа [2027 [года]]» с позиции k; явный год — буквально, даже прошедший. */
+    private fun calendarAt(tokens: List<Token>, k: Int, today: LocalDate): DateCandidate? {
+        val (day, dEnd) = dayAt(tokens, k) ?: return null
+        val month = months[tokens.getOrNull(dEnd + 1)?.lower] ?: return null
+        yearToken(tokens.getOrNull(dEnd + 2)?.lower)?.let { y ->
+            var end = dEnd + 2
+            if (tokens.getOrNull(end + 1)?.lower in setOf("года", "г")) end++
+            return dateOrNull(y, month, day)?.let { DateCandidate(it, k..end) }
+        }
+        val thisYear = dateOrNull(today.year, month, day)
+        val date = if (thisYear != null && !thisYear.isBefore(today)) thisYear
+                   else dateOrNull(today.year + 1, month, day)
+        return date?.let { DateCandidate(it, k..dEnd + 1) }
+    }
+
     private val nextAdj = setOf("следующий", "следующая", "следующую", "следующее")
     private val thisAdj = setOf("этот", "эта", "эту", "это")
 
@@ -142,12 +205,34 @@ internal object DateRules {
         var j = i
         if (tokens[j].lower == "в" || tokens[j].lower == "во") j++
         val adj = tokens.getOrNull(j)?.lower
-        val isNextWeek = adj in nextAdj
+        var isNextWeek = adj in nextAdj
         if (isNextWeek || adj in thisAdj) j++
         val dow = weekdays[tokens.getOrNull(j)?.lower] ?: return null
 
+        // «Понедельник, 18 февраля» — календарная дата главнее дня недели:
+        // день поглощается её матчем, согласованность не проверяем
+        calendarAt(tokens, j + 1, today)?.let { d -> return d.copy(tokens = i..d.tokens.last) }
+
+        var end = j
+        // «вторник на следующей неделе» / «понедельник этой недели»
+        weekQualifier(tokens, j + 1)?.let { (next, qEnd) ->
+            if (next) isNextWeek = true
+            end = qEnd
+        }
+
         val base = if (isNextWeek) today.with(TemporalAdjusters.next(DayOfWeek.MONDAY)) else today
-        return DateCandidate(base.with(TemporalAdjusters.nextOrSame(dow)), i..j, fromWeekday = true)
+        return DateCandidate(base.with(TemporalAdjusters.nextOrSame(dow)), i..end, fromWeekday = true)
+    }
+
+    /** «[на] следующей/этой неделе» за днём → (следующая ли неделя, конец матча). */
+    private fun weekQualifier(tokens: List<Token>, k: Int): Pair<Boolean, Int>? {
+        var j = k
+        if (tokens.getOrNull(j)?.lower == "на") j++
+        val adj = tokens.getOrNull(j)?.lower ?: return null
+        val next = adj in setOf("следующей", "будущей")
+        if (!next && adj !in setOf("этой", "текущей")) return null
+        if (tokens.getOrNull(j + 1)?.lower !in setOf("неделе", "недели")) return null
+        return next to j + 1
     }
 
     fun dateOrNull(year: Int, month: Int, day: Int): LocalDate? =

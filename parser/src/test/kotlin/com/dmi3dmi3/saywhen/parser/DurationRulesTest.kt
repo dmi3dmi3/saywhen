@@ -40,6 +40,19 @@ class DurationRulesTest {
     }
 
     @Test
+    fun `десятичные часы — раздельно и склейкой`() {
+        assertDuration("созвон в 15 на 1,5 часа", Duration.ofMinutes(90))
+        assertDuration("созвон в 15 на 1.5 часа", Duration.ofMinutes(90))
+        assertDuration("дорога в 9 на 2,5 часа", Duration.ofMinutes(150))
+        assertDuration("отчёт в 11 1,5ч", Duration.ofMinutes(90))
+    }
+
+    @Test
+    fun `дробные минуты — не длительность`() {
+        assertNull(parser.parse("пауза в 15 на 1,5 минуты", now).duration)
+    }
+
+    @Test
     fun `голая склейка длительности — без «на»`() {
         assertDuration("встреча в 11 2ч", Duration.ofHours(2))
         assertDuration("встреча в 11 2ч45м", Duration.ofMinutes(165))

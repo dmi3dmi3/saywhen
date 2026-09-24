@@ -1,0 +1,12 @@
+⚠️ Nueva clave de firma.
+Esta actualización no se instala sobre la versión firmada por F-Droid. Desinstala SayWhen e instálalo de nuevo, hay que hacerlo una sola vez.
+Tus eventos no se pierden: viven en el calendario, no en la app. Los ajustes de la app, en cambio, hay que volver a configurarlos.
+Por qué: F-Droid ahora comprueba por su cuenta que nuestra compilación se puede reproducir bit a bit, y distribuye el APK firmado por el desarrollador. Es la misma firma que la de la compilación de GitHub, así que puedes instalar la app desde una fuente y actualizarla desde la otra.
+
+En la versión 3.0 la app admite cinco idiomas y recordatorios.
+
+• Italiano, español y alemán. Las frases en estos idiomas se reconocen y la interfaz está traducida.
+• Recordatorios. Escríbelo directamente en la frase: «cena mañana a las 21 !10» o «recuérdame 10 minutos antes». El recordatorio fijo para todos los eventos se configura en los ajustes.
+• Ajustes rehechos: calendario, duración, recordatorio y temas.
+• Los ajustes avanzados están para casos especiales. Idiomas de reconocimiento: el idioma de la interfaz y el inglés están activos de inicio, añade los demás si escribes en ellos. Franja horaria activa: los límites de tu día, para que un «a las 9» a secas se entienda como la mañana y no como la tarde.
+• El ruso y el inglés entienden más expresiones coloquiales y se han corregido varios errores de interpretación.

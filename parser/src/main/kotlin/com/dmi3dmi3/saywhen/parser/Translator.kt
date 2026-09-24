@@ -25,4 +25,5 @@ internal data class Extraction(
     val date: DateCandidate? = null,
     val time: TimeCandidate? = null,
     val duration: DurationCandidate? = null,
+    val reminder: ReminderCandidate? = null,
 )

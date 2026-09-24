@@ -4,6 +4,7 @@ import android.content.ContentResolver
 import android.content.ContentUris
 import android.content.ContentValues
 import android.provider.CalendarContract.Events
+import android.provider.CalendarContract.Reminders
 import com.dmi3dmi3.saywhen.parser.ParsedEvent
 import java.time.Duration
 import java.time.ZoneOffset
@@ -16,9 +17,16 @@ class CalendarWriter(private val resolver: ContentResolver) {
     /**
      * Гочи провайдера (спека, «Запись в календарь»): повтор требует DURATION
      * и запрещает DTEND; all-day живёт в полуночи UTC; all-day+повтор — P1D.
+     * [reminderMinutes] — уже действующее напоминание (текст > дефолт,
+     * all-day-гейт — [effectiveReminder] на вызывающей стороне).
      * @return id события или null, если вставка не удалась.
      */
-    fun insert(event: ParsedEvent, calendarId: Long, defaultDuration: Duration): Long? {
+    fun insert(
+        event: ParsedEvent,
+        calendarId: Long,
+        defaultDuration: Duration,
+        reminderMinutes: Int? = null,
+    ): Long? {
         val values = ContentValues().apply {
             put(Events.CALENDAR_ID, calendarId)
             put(Events.TITLE, event.title)
@@ -48,7 +56,19 @@ class CalendarWriter(private val resolver: ContentResolver) {
             }
         }
         val uri = resolver.insert(Events.CONTENT_URI, values) ?: return null
-        return runCatching { ContentUris.parseId(uri) }.getOrNull()
+        val id = runCatching { ContentUris.parseId(uri) }.getOrNull() ?: return null
+        // напоминание — отдельной строкой; undo-delete события снесёт её каскадом
+        reminderMinutes?.let { minutes ->
+            resolver.insert(
+                Reminders.CONTENT_URI,
+                ContentValues().apply {
+                    put(Reminders.EVENT_ID, id)
+                    put(Reminders.MINUTES, minutes)
+                    put(Reminders.METHOD, Reminders.METHOD_ALERT)
+                },
+            )
+        }
+        return id
     }
 
     /** Undo: удаление только что созданного события. */

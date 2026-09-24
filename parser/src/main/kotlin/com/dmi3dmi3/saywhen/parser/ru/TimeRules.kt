@@ -4,12 +4,19 @@ import com.dmi3dmi3.saywhen.parser.ClockText
 import com.dmi3dmi3.saywhen.parser.Confidence
 import com.dmi3dmi3.saywhen.parser.TimeCandidate
 import com.dmi3dmi3.saywhen.parser.Token
+import com.dmi3dmi3.saywhen.parser.bareHourAfterClaim
+import com.dmi3dmi3.saywhen.parser.free
 import java.time.Duration
 import java.time.LocalTime
+import java.time.ZonedDateTime
 
 internal object TimeRules {
 
     private val hourWords = setOf("час", "часа", "часов")
+    private val minuteWords = setOf("минуту", "минуты", "минут")
+
+    // «в 15ч» — час, склеенный с единицей
+    private val gluedHour = Regex("""(\d{1,2})ч""")
 
     private val wordHours = mapOf(
         "час" to 1, "два" to 2, "три" to 3, "четыре" to 4, "пять" to 5, "шесть" to 6,
@@ -77,10 +84,21 @@ internal object TimeRules {
             return refine(tokens, used, LocalTime.of(h, 30), i..i, inCircle = true, Confidence.STRONG)
         }
 
-        // «в 15» / «в 9:30» / «в 19 30» / «в 15 часов» / «в три [часа]» / «в 7 вечера»
+        // «8 часов вечера» — без предлога, но только с половиной суток следом
+        run {
+            val h = t.toIntOrNull() ?: return@run
+            if (h !in 1..12) return@run
+            if (tokens.getOrNull(i + 1)?.lower !in hourWords) return@run
+            val adjust = dayparts[tokens.getOrNull(i + 2)?.lower] ?: return@run
+            if (free(used, i..i + 2, tokens.size)) {
+                return TimeCandidate(LocalTime.of(adjust(h), 0), null, i..i + 2, confidence = Confidence.STRONG)
+            }
+        }
+
+        // «в 15» / «в 9:30» / «в 19.30» / «в 19 30» / «в 15 часов» / «в 15ч» / «в три [часа]» / «в 7 вечера»
         if (t == "в" && free(used, i..i + 1, tokens.size)) {
             val raw = tokens.getOrNull(i + 1)?.lower
-            val time = clock(raw)
+            val time = clock(raw) ?: ClockText.dottedClock(raw) ?: gluedHourTime(raw)
             if (time != null && raw != null) {
                 if (':' !in raw) {
                     // «в 19 30» — минуты отдельным токеном
@@ -147,24 +165,37 @@ internal object TimeRules {
     }
 
     /**
-     * Фоллбэк, когда обычные правила времени ничего не нашли: голое число
-     * 0–23 сразу после распознанного куска (даты/повтора) читается как час —
-     * «завтра 11 планёрка», «каждую неделю 11 треня». Смежность обязательна:
-     * «купить 15 яиц» временем не становится.
+     * «через час / через 2 часа / через 30 минут» — офсет от «сейчас».
+     * Перекат за полночь делает сборка: прошедшее время уходит на завтра.
      */
-    fun bareHourAfterClaim(tokens: List<Token>, used: BooleanArray): TimeCandidate? {
-        for (i in 1 until tokens.size) {
-            if (used[i] || !used[i - 1]) continue
-            val t = tokens[i].lower
-            val hour = t.takeIf { it.length <= 2 }?.toIntOrNull() ?: continue
-            if (hour in 0..23) return refine(tokens, used, LocalTime.of(hour, 0), i..i, confidence = Confidence.WEAK)
+    fun offsetTime(tokens: List<Token>, used: BooleanArray, now: ZonedDateTime): TimeCandidate? {
+        for (i in tokens.indices) {
+            if (used[i] || tokens[i].lower != "через") continue
+            val next = tokens.getOrNull(i + 1)?.lower ?: continue
+            val base = now.toLocalTime().withSecond(0).withNano(0)
+            if (next in hourWords && free(used, i..i + 1, tokens.size)) {
+                return TimeCandidate(base.plusHours(1), null, i..i + 1)
+            }
+            val n = next.toLongOrNull()?.takeIf { it in 1..999 } ?: continue
+            val time = when (tokens.getOrNull(i + 2)?.lower) {
+                in hourWords -> base.plusHours(n)
+                in minuteWords -> base.plusMinutes(n)
+                else -> null
+            } ?: continue
+            if (free(used, i..i + 2, tokens.size)) return TimeCandidate(time, null, i..i + 2)
         }
         return null
     }
 
+    private fun gluedHourTime(s: String?): LocalTime? =
+        s?.let { gluedHour.matchEntire(it) }?.groupValues?.get(1)?.toIntOrNull()
+            ?.takeIf { it in 0..23 }?.let { LocalTime.of(it, 0) }
+
+    /** Голый час после распознанного куска — общий цикл в ядре, доводка наша. */
+    fun bareHourAfterClaim(tokens: List<Token>, used: BooleanArray): TimeCandidate? =
+        bareHourAfterClaim(tokens, used) { time, range ->
+            refine(tokens, used, time, range, confidence = Confidence.WEAK)
+        }
+
     private fun clock(s: String?) = ClockText.clock(s)
-
-    private fun free(used: BooleanArray, range: IntRange, size: Int): Boolean =
-        range.last < size && range.all { !used[it] }
-
 }

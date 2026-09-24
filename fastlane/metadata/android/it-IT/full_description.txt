@@ -1,0 +1,17 @@
+Niente moduli, niente campi. Di' solo quando.
+
+Scrivi l'evento come lo diresti, in italiano, inglese, russo, spagnolo o tedesco:
+
+• Palestra ogni martedì e venerdì alle 9
+• Cinema domani alle 11 per un'ora e mezza !10
+• Dentista il 3 giugno alle 12:30
+
+SayWhen analizza la frase mentre scrivi: data, ora, durata, ricorrenza, un promemoria «!10». Mostra un'anteprima dal vivo di ciò che ha capito e scrive l'evento direttamente nel calendario che hai scelto. Tocca il widget, scrivi, fatto.
+
+Privato per costruzione:
+
+• Nessuna registrazione, nessun server, niente analytics, niente identificatori
+• Nessun accesso alla rete — l'app non dichiara nemmeno il permesso INTERNET
+• Due permessi in totale: leggere l'elenco dei calendari e scrivere l'evento richiesto
+
+Gli eventi vanno solo nel tuo calendario e da nessun'altra parte. Se il calendario appartiene a un account sincronizzato, è il suo sync a caricare l'evento, esattamente come con qualsiasi altra app calendario.

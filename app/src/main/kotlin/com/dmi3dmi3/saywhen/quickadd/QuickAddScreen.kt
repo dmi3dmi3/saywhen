@@ -97,6 +97,7 @@ import com.dmi3dmi3.saywhen.parser.ParsedEvent
 import com.dmi3dmi3.saywhen.parser.TokenMatch
 import com.dmi3dmi3.saywhen.settings.Settings
 import com.dmi3dmi3.saywhen.settings.SettingsRepository
+import com.dmi3dmi3.saywhen.settings.parserOrder
 import java.time.Duration
 import java.time.ZonedDateTime
 import java.util.Locale
@@ -145,9 +146,19 @@ internal data class Created(
 @Composable
 fun QuickAddScreen(onClose: () -> Unit, prefill: String? = null) {
     val context = LocalContext.current
-    val parser = remember { MultilingualEventParser() }
     val settingsRepo = remember { SettingsRepository(context) }
     val settings by settingsRepo.settings.collectAsState(initial = Settings())
+    // парсер из настроек: языки (30) + окно активности (30a)
+    val uiLanguage = stringResource(R.string.date_locale)
+    val parser = remember(
+        settings.parserLanguages, uiLanguage,
+        settings.activityStartHour, settings.activityEndHour,
+    ) {
+        MultilingualEventParser(
+            parserOrder(uiLanguage, settings.parserLanguages),
+            settings.activityStartHour until settings.activityEndHour,
+        )
+    }
     val defaultDuration = Duration.ofMinutes(settings.defaultDurationMinutes.toLong())
     var value by remember {
         mutableStateOf(TextFieldValue(prefill.orEmpty(), TextRange(prefill.orEmpty().length)))
@@ -157,7 +168,7 @@ fun QuickAddScreen(onClose: () -> Unit, prefill: String? = null) {
     var created by remember { mutableStateOf<Created?>(null) }
     // автозакрытие живо, только пока после создания не было ввода (серийный ввод)
     var autoClose by remember { mutableStateOf(false) }
-    val parsed = remember(value.text, blocked) { parser.parse(value.text, ZonedDateTime.now(), blocked) }
+    val parsed = remember(value.text, blocked, parser) { parser.parse(value.text, ZonedDateTime.now(), blocked) }
 
     fun create() {
         val repo = CalendarRepository(context.contentResolver)
@@ -170,7 +181,10 @@ fun QuickAddScreen(onClose: () -> Unit, prefill: String? = null) {
             return
         }
         val event = parser.parse(value.text, ZonedDateTime.now(), blocked)
-        val id = CalendarWriter(context.contentResolver).insert(event, calendar.id, defaultDuration)
+        val id = CalendarWriter(context.contentResolver).insert(
+            event, calendar.id, defaultDuration,
+            reminderMinutes = effectiveReminder(event, settings.defaultReminderMinutes),
+        )
         if (id == null) {
             error = context.getString(R.string.error_insert_failed) to null
         } else {
@@ -267,6 +281,7 @@ fun QuickAddScreen(onClose: () -> Unit, prefill: String? = null) {
             },
             parsed = parsed,
             defaultDuration = defaultDuration,
+            defaultReminderMinutes = settings.defaultReminderMinutes,
             nodEnabled = settings.nodEnabled,
             error = error,
             created = created,
@@ -313,6 +328,7 @@ private fun InputConstruction(
     onValueChange: (TextFieldValue) -> Unit,
     parsed: ParsedEvent,
     defaultDuration: Duration,
+    defaultReminderMinutes: Int?,
     nodEnabled: Boolean,
     error: Pair<String, ErrorAction?>?,
     created: Created?,
@@ -362,6 +378,7 @@ private fun InputConstruction(
             parsed = parsed,
             text = value.text,
             defaultDuration = defaultDuration,
+            defaultReminderMinutes = defaultReminderMinutes,
             error = error,
             created = created,
             createEnabled = value.text.isNotBlank(),
@@ -526,6 +543,7 @@ private fun Tray(
     parsed: ParsedEvent,
     text: String,
     defaultDuration: Duration,
+    defaultReminderMinutes: Int?,
     error: Pair<String, ErrorAction?>?,
     created: Created?,
     createEnabled: Boolean,
@@ -582,7 +600,7 @@ private fun Tray(
                             }
                         }
                     } else {
-                        SummaryLine(parsed, text, defaultDuration)
+                        SummaryLine(parsed, text, defaultDuration, defaultReminderMinutes)
                     }
                 }
                 Button(onClick = onCreate, enabled = createEnabled) {
@@ -595,7 +613,12 @@ private fun Tray(
 
 /** Строка-итог: полное будущее событие; дефолты — приглушённым. */
 @Composable
-private fun SummaryLine(parsed: ParsedEvent, text: String, defaultDuration: Duration) {
+private fun SummaryLine(
+    parsed: ParsedEvent,
+    text: String,
+    defaultDuration: Duration,
+    defaultReminderMinutes: Int?,
+) {
     val labels = SummaryLabels(
         today = stringResource(R.string.summary_today),
         tomorrow = stringResource(R.string.summary_tomorrow),
@@ -603,9 +626,16 @@ private fun SummaryLine(parsed: ParsedEvent, text: String, defaultDuration: Dura
         locale = Locale.forLanguageTag(stringResource(R.string.date_locale)),
         datePattern = stringResource(R.string.summary_date_pattern),
         timePattern = stringResource(R.string.summary_time_pattern),
+        hourUnit = stringResource(R.string.unit_hours),
+        minuteUnit = stringResource(R.string.unit_minutes),
+        reminderAtEvent = stringResource(R.string.summary_reminder_at_event),
+        reminderBefore = stringResource(R.string.summary_reminder_before),
     )
-    val summary = remember(parsed, text, defaultDuration, labels) {
-        previewSummary(parsed, text, defaultDuration, labels, ZonedDateTime.now().toLocalDate())
+    val summary = remember(parsed, text, defaultDuration, defaultReminderMinutes, labels) {
+        previewSummary(
+            parsed, text, defaultDuration, defaultReminderMinutes, labels,
+            ZonedDateTime.now().toLocalDate(),
+        )
     }
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
     val normal = MaterialTheme.colorScheme.onSurface

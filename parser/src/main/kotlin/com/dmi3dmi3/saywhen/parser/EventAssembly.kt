@@ -25,6 +25,7 @@ internal object EventAssembly {
         orphanWords: Set<String>,
         defaultTitle: String,
         now: ZonedDateTime,
+        activityWindow: IntRange,
     ): ParsedEvent {
         val used = BooleanArray(tokens.size) { blocked[it] }
         val claims = mutableListOf<Claim>()
@@ -44,6 +45,7 @@ internal object EventAssembly {
         date?.let { take(it.tokens, TokenMatch.Field.DATE) }
         time?.let { take(it.tokens, TokenMatch.Field.TIME) }
         extraction.duration?.let { take(it.tokens, TokenMatch.Field.DURATION) }
+        extraction.reminder?.let { take(it.tokens, TokenMatch.Field.REMINDER) }
 
         // поглощение осиротевших предлогов (справа налево — цепочки каскадом);
         // к заблокированному соседу не липнем — он останется в заголовке
@@ -64,11 +66,20 @@ internal object EventAssembly {
         val dayHalf = rec?.dayHalf ?: date?.dayHalf
         var start = when {
             allDay -> startDate.atStartOfDay(now.zone)
-            time!!.twelveHour && dayHalf != null ->
-                startDate.atTime(time.time.withHour(dayHalf.resolve(time.time.hour))).atZone(now.zone)
+            time!!.twelveHour && dayHalf != null -> {
+                val hour = dayHalf.resolve(time.time.hour)
+                // «12 вечера/ночи» — наступающая полночь (контракт DayHalf),
+                // иначе «сегодня ночью в 12» оказалось бы прошедшим 00:00
+                val date = if (dayHalf == DayHalf.EVENING && time.time.hour == 12) {
+                    startDate.plusDays(1)
+                } else {
+                    startDate
+                }
+                date.atTime(time.time.withHour(hour)).atZone(now.zone)
+            }
             // 12-часовой круг: окно активности решает пару, «сейчас» не участвует —
             // прошедшее без явной даты уезжает вперёд общим сдвигом ниже
-            time.twelveHour -> TwelveHourClock.resolve(time.time, startDate, now.zone)
+            time.twelveHour -> TwelveHourClock.resolve(time.time, startDate, now.zone, activityWindow)
             else -> startDate.atTime(time.time).atZone(now.zone)
         }
 
@@ -100,6 +111,8 @@ internal object EventAssembly {
             allDay = allDay,
             duration = time?.duration ?: extraction.duration?.duration ?: rangeDuration,
             rrule = rec?.let { finalRrule(it, allDay, now) },
+            // гейт all-day (напоминание не ставим) — app-слой; ядро честно отдаёт форму
+            reminderMinutes = extraction.reminder?.minutes,
             matches = claims
                 .map { TokenMatch(charSpan(tokens, it.tokens), it.field) }
                 .sortedBy { it.range.first },
@@ -140,11 +153,16 @@ internal object EventAssembly {
             if (used[i] && !blocked[i]) sb.delete(tokens[i].range.first, tokens[i].range.last + 1)
         }
         return sb.toString()
+            // апостроф-сирота вырезанного «un'ora» (токенайзер режет по нему)
+            .replace(Regex("""(?:^|(?<=\s))['’]+(?=\s|$)"""), "")
             .replace(Regex("\\s+"), " ")
-            .replace(Regex(" ([,.;:!?])"), "$1")  // «встреча , обед» → «встреча, обед»
+            // «встреча , обед» → «встреча, обед»; «!» перед цифрой не клеим —
+            // это остаток формы напоминания («!10x»), не пунктуация
+            .replace(Regex(""" ([,.;:?]|!(?!\d))"""), "$1")
             .replace(Regex(",{2,}"), ",")         // следы двух вырезов подряд
             .trim { it.isWhitespace() || it in ",.;:—-" }
-            .ifEmpty { defaultTitle }
+            // остаток без букв и цифр (апостроф между вырезанными токенами) — не заголовок
+            .let { if (it.any(Char::isLetterOrDigit)) it else defaultTitle }
     }
 
     /** Символьный диапазон от первого до последнего токена. */

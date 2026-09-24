@@ -31,6 +31,15 @@ class DateRulesTest {
     }
 
     @Test
+    fun `явный год — берём буквально, даже прошедший`() {
+        assertDate("релиз 3 августа 2027", LocalDate.of(2027, 8, 3))
+        assertDate("встреча 3 августа 2024", LocalDate.of(2024, 8, 3))
+        val e = parser.parse("релиз 3 августа 2027 года", now)
+        assertEquals(LocalDate.of(2027, 8, 3).atStartOfDay(now.zone), e.start)
+        assertEquals("релиз", e.title)  // «года» приклеивается к матчу
+    }
+
+    @Test
     fun `дни недели — ближайший будущий, сегодня подходит`() {
         assertDate("в пятницу", LocalDate.of(2026, 7, 24))
         assertDate("в среду", LocalDate.of(2026, 7, 22))
@@ -167,6 +176,63 @@ class DateRulesTest {
     @Test
     fun `диапазон через границу месяца`() {
         assertRange("с 30 августа по 2 сентября", LocalDate.of(2026, 8, 30), 4)
+    }
+
+    @Test
+    fun `дефис с пробелами — тот же диапазон, что склейка`() {
+        assertRange("отпуск 13 - 15 августа", LocalDate.of(2026, 8, 13), 3)
+    }
+
+    @Test
+    fun `день недели плюс следующая неделя`() {
+        assertDate("вторник на следующей неделе", LocalDate.of(2026, 7, 28))
+        assertDate("понедельник этой недели", LocalDate.of(2026, 7, 27))
+    }
+
+    @Test
+    fun `порядковые даты — словами и цифро-суффиксом`() {
+        assertDate("восемнадцатое февраля", LocalDate.of(2027, 2, 18))
+        assertDate("сдача третьего марта 2027", LocalDate.of(2027, 3, 3))
+        assertDate("двадцать четвёртое августа", LocalDate.of(2026, 8, 24))
+        assertDate("18-го февраля", LocalDate.of(2027, 2, 18))
+        assertDate("школа 1-е сентября", LocalDate.of(2026, 9, 1))
+    }
+
+    @Test
+    fun `половина суток после относительного дня — хинт часу`() {
+        val e = parser.parse("созвон завтра вечером в 8", now)
+        assertEquals(20, e.start.hour)
+        assertEquals(LocalDate.of(2026, 7, 22), e.start.toLocalDate())
+
+        val m = parser.parse("пробежка завтра утром в 9", now)
+        assertEquals(9, m.start.hour)
+
+        // без времени — просто all-day день
+        assertTrue(parser.parse("дела завтра вечером", now).allDay)
+    }
+
+    @Test
+    fun `периоды без дня — не дата и не повтор`() {
+        for (phrase in listOf("планы на следующей неделе", "отчёт этот месяц", "рынок в эти выходные")) {
+            val e = parser.parse(phrase, now)
+            assertTrue(phrase, e.allDay)
+            assertEquals(phrase, LocalDate.of(2026, 7, 21), e.start.toLocalDate())
+            assertNull(phrase, e.rrule)
+        }
+    }
+
+    @Test
+    fun `через год — годовой юнит смещения`() {
+        assertDate("страховка через год", LocalDate.of(2027, 7, 21))
+        assertDate("через 3 года", LocalDate.of(2029, 7, 21))
+    }
+
+    @Test
+    fun `ведущий день недели уступает календарной дате`() {
+        val e = parser.parse("понедельник, 18 февраля", now)
+        assertEquals(LocalDate.of(2027, 2, 18).atStartOfDay(now.zone), e.start)
+        assertTrue(e.allDay)
+        assertEquals("Событие", e.title)
     }
 
     @Test

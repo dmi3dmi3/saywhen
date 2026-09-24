@@ -1,9 +1,12 @@
 package com.dmi3dmi3.saywhen.parser.ru
 
 import com.dmi3dmi3.saywhen.parser.Confidence
+import com.dmi3dmi3.saywhen.parser.DayHalf
 import com.dmi3dmi3.saywhen.parser.RecurrenceCandidate
 import com.dmi3dmi3.saywhen.parser.Token
+import com.dmi3dmi3.saywhen.parser.free
 import com.dmi3dmi3.saywhen.parser.ordinalMonthlyRecurrence
+import com.dmi3dmi3.saywhen.parser.periodOf
 import com.dmi3dmi3.saywhen.parser.weeklyRecurrence
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -14,6 +17,21 @@ internal object RecurrenceRules {
 
     private val every = setOf("каждый", "каждая", "каждую", "каждое", "каждые")
 
+    // «ежедневно» — частота одним словом, как en daily/weekly
+    private val adverbFreq = mapOf(
+        "ежедневно" to "DAILY", "еженедельно" to "WEEKLY",
+        "ежемесячно" to "MONTHLY", "ежегодно" to "YEARLY",
+    )
+
+    // «каждое утро/вечер/ночь», «по утрам/вечерам/ночам» — ежедневный повтор
+    // + половина суток для часа круга
+    private val dayHalves = mapOf(
+        "утро" to DayHalf.MORNING, "вечер" to DayHalf.EVENING, "ночь" to DayHalf.EVENING,
+    )
+    private val poHalves = mapOf(
+        "утрам" to DayHalf.MORNING, "вечерам" to DayHalf.EVENING, "ночам" to DayHalf.EVENING,
+    )
+
     // «каждый первый/второй… <день недели> месяца»; -1 — последний
     private val ordinals = mapOf(
         "первый" to 1, "первую" to 1, "первое" to 1,
@@ -21,6 +39,7 @@ internal object RecurrenceRules {
         "третий" to 3, "третью" to 3, "третье" to 3,
         "четвертый" to 4, "четвёртый" to 4, "четвертую" to 4, "четвёртую" to 4,
         "четвертое" to 4, "четвёртое" to 4,
+        "пятый" to 5, "пятую" to 5, "пятое" to 5,
         "последний" to -1, "последнюю" to -1, "последнее" to -1,
     )
 
@@ -29,6 +48,12 @@ internal object RecurrenceRules {
         "неделю" to "WEEKLY", "недели" to "WEEKLY", "недель" to "WEEKLY",
         "месяц" to "MONTHLY", "месяца" to "MONTHLY", "месяцев" to "MONTHLY",
         "год" to "YEARLY", "года" to "YEARLY", "лет" to "YEARLY",
+    )
+
+    // «каждые две недели» — интервал числительным словом
+    private val intervalWords = mapOf(
+        "два" to 2, "две" to 2, "три" to 3, "четыре" to 4, "пять" to 5,
+        "шесть" to 6, "семь" to 7, "восемь" to 8, "девять" to 9, "десять" to 10,
     )
 
     // «по …» — дательный множественный
@@ -122,12 +147,41 @@ internal object RecurrenceRules {
     private fun matchAt(tokens: List<Token>, i: Int, used: BooleanArray): RecurrenceCandidate? {
         val t = tokens[i].lower
 
-        // «по будням» / «по выходным» / «по вторникам [и четвергам …]»
+        // «по будням» / «по выходным» / «по вторникам [и четвергам …]» /
+        // «по утрам»
         if (t == "по" && free(used, i..i + 1, tokens.size)) {
             poDays[tokens.getOrNull(i + 1)?.lower]?.let { first ->
                 val days = first.toMutableSet()
                 val end = consumeDays(tokens, i + 2, used, days) { poDays[it] }
                 return weeklyRecurrence(days, i until end)
+            }
+            poHalves[tokens.getOrNull(i + 1)?.lower]?.let { half ->
+                return RecurrenceCandidate("FREQ=DAILY", i..i + 1, period = Period.ofDays(1), dayHalf = half)
+            }
+        }
+
+        // «ежедневно» / «еженедельно» / «ежемесячно» / «ежегодно»
+        adverbFreq[t]?.let {
+            return RecurrenceCandidate("FREQ=$it", i..i, period = periodOf(it, 1))
+        }
+
+        // «раз в неделю» / «раз в 2 недели» — частота без «каждый»; с числом
+        // перед «раз» («5 раз в день») повтором не берём: дни/часы неизвестны,
+        // RRULE это не выражает
+        if (t == "раз" && tokens.getOrNull(i + 1)?.lower == "в" &&
+            (i == 0 || tokens[i - 1].lower.toIntOrNull() == null)
+        ) {
+            val third = tokens.getOrNull(i + 2)?.lower
+            unitFreq[third]?.let { f ->
+                if (free(used, i..i + 2, tokens.size)) {
+                    return RecurrenceCandidate("FREQ=$f", i..i + 2, period = periodOf(f, 1))
+                }
+            }
+            val n = third?.toIntOrNull()
+            val f = unitFreq[tokens.getOrNull(i + 3)?.lower]
+            if (n != null && n in 1..99 && f != null && free(used, i..i + 3, tokens.size)) {
+                val rrule = if (n > 1) "FREQ=$f;INTERVAL=$n" else "FREQ=$f"
+                return RecurrenceCandidate(rrule, i..i + 3, period = periodOf(f, n))
             }
         }
 
@@ -156,6 +210,18 @@ internal object RecurrenceRules {
             }
         }
 
+        // «каждое утро/вечер/ночь» — ежедневно + половина суток для часа
+        dayHalves[next]?.let { half ->
+            if (free(used, i..i + 1, tokens.size)) {
+                return RecurrenceCandidate("FREQ=DAILY", i..i + 1, period = Period.ofDays(1), dayHalf = half)
+            }
+        }
+
+        // «каждые выходные» — как «по выходным»
+        if (next == "выходные" && free(used, i..i + 1, tokens.size)) {
+            return weeklyRecurrence(poDays.getValue("выходным"), i..i + 1)
+        }
+
         // «каждый день/неделю/месяц/год»
         unitFreq[next]?.let {
             if (free(used, i..i + 1, tokens.size)) {
@@ -163,7 +229,7 @@ internal object RecurrenceRules {
             }
         }
 
-        val n = next.toIntOrNull() ?: return null
+        val n = next.toIntOrNull() ?: intervalWords[next] ?: return null
         val third = tokens.getOrNull(i + 2)?.lower
 
         // «каждое 15 число»
@@ -212,13 +278,4 @@ internal object RecurrenceRules {
         return j
     }
 
-    private fun periodOf(freq: String, n: Int): Period = when (freq) {
-        "DAILY" -> Period.ofDays(n)
-        "WEEKLY" -> Period.ofWeeks(n)
-        "MONTHLY" -> Period.ofMonths(n)
-        else -> Period.ofYears(n)
-    }
-
-    private fun free(used: BooleanArray, range: IntRange, size: Int): Boolean =
-        range.last < size && range.all { !used[it] }
 }

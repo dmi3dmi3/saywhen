@@ -14,19 +14,27 @@ import java.time.ZonedDateTime
  * общей сборки события (задача 16), транслятор лишь помечает кандидата
  * флагом `twelveHour`.
  */
+/**
+ * Правило окна одной функцией: выбранный час 0..23 для голого часа [hour]
+ * при окне активности [window]. Публична ради живых примеров в настройках
+ * (задача 30a) — UI не держит копию правила.
+ */
+fun resolveTwelveHour(hour: Int, window: IntRange): Int {
+    val second = if (hour == 12) 0 else hour + 12  // пара 12 — наступающая полночь
+    return when {
+        hour in window -> hour
+        second in window -> second
+        else -> hour
+    }
+}
+
 internal object TwelveHourClock {
 
-    // дневное окно; часы вне его (20:00–7:00) просят явности: «в 9 вечера», «22:30»
-    private val window = 8..21
-
-    /** Кандидат в окне; оба или ни один — буквальный (ранний). */
-    fun resolve(time: LocalTime, date: LocalDate, zone: ZoneId): ZonedDateTime {
+    /** Кандидат в окне; оба или ни один — буквальный (ранний). Окно —
+     *  настройка (30a), дефолт 8:00–21:59: часы вне просят явности. */
+    fun resolve(time: LocalTime, date: LocalDate, zone: ZoneId, window: IntRange): ZonedDateTime {
         val (first, second) = candidates(time, date, zone)
-        return when {
-            first.hour in window -> first
-            second.hour in window -> second
-            else -> first
-        }
+        return if (resolveTwelveHour(time.hour, window) == first.hour) first else second
     }
 
     private fun candidates(time: LocalTime, date: LocalDate, zone: ZoneId): Pair<ZonedDateTime, ZonedDateTime> {

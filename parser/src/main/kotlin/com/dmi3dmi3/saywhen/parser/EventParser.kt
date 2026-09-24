@@ -5,7 +5,7 @@ import java.time.ZonedDateTime
 
 /** Кусок исходного текста, распознанный как поле события (подсветка в UI). */
 data class TokenMatch(val range: IntRange, val field: Field) {
-    enum class Field { DATE, TIME, DURATION, RECURRENCE }
+    enum class Field { DATE, TIME, DURATION, RECURRENCE, REMINDER }
 }
 
 /**
@@ -18,6 +18,7 @@ data class ParsedEvent(
     val allDay: Boolean,
     val duration: Duration?,    // null — не распознана; дефолт подставляет app-слой
     val rrule: String?,         // RFC 5545, например "FREQ=WEEKLY;BYDAY=TU"
+    val reminderMinutes: Int? = null,  // «!10», «напомни за 10 минут»; null — не распознано
     val matches: List<TokenMatch>,
 )
 

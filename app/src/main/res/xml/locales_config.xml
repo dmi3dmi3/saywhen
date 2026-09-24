@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 13+: язык приложения в системных настройках (задача 28). -->
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+    <locale android:name="en" />
+    <locale android:name="ru" />
+    <locale android:name="it" />
+    <locale android:name="es" />
+    <locale android:name="de" />
+</locale-config>

@@ -26,6 +26,38 @@ class TimeRulesTest {
         ZonedDateTime.of(2026, 7, day, hour, minute, 0, 0, now.zone)
 
     @Test
+    fun `через час и через N единиц — офсет от сейчас`() {
+        assertStart("позвонить через 2 часа", at(21, 16))
+        assertStart("через час", at(21, 15))
+        assertStart("напомнить через 30 минут", at(21, 14, 30))
+    }
+
+    @Test
+    fun `8 часов вечера — без предлога, но с половиной суток`() {
+        assertStart("встреча 8 часов вечера", at(21, 20))
+    }
+
+    @Test
+    fun `склейка часа с ч — в 15ч`() {
+        assertStart("отчёт в 15ч", at(21, 15))
+    }
+
+    @Test
+    fun `слэш- и дефис-пары чисел — не время`() {
+        assertTrue(parser.parse("2/15", now).allDay)
+        assertTrue(parser.parse("отчёт 10/31/74", now).allDay)
+        assertTrue(parser.parse("купить 2 - 15", now).allDay)
+    }
+
+    @Test
+    fun `точка как разделитель времени — только с предлогом`() {
+        assertStart("встреча в 19.30", at(21, 19, 30))
+        // без предлога числовая пара с точкой — не время: «3.08» — дата, «15.30» — что угодно
+        assertTrue(parser.parse("стрижка 15.30", now).allDay)
+        assertTrue(parser.parse("встреча 3.08", now).allDay)
+    }
+
+    @Test
     fun `время с датой`() {
         assertStart("завтра в 15", at(22, 15))
         assertStart("в 9:30 завтра", at(22, 9, 30))

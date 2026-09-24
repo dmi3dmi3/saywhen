@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Итальянская локаль UI (задача 28); перевод агентский, без нейтивной вычитки. -->
+
+    <!-- Виджет -->
+    <string name="widget_label">+ evento</string>
+    <string name="widget_description">Evento rapido dal testo</string>
+
+    <!-- Окно быстрого ввода -->
+    <string name="quickadd_placeholder">Titolo dell\'evento</string>
+    <string name="quickadd_create">Crea</string>
+    <string name="quickadd_created">Creato ✓ %1$s</string>
+    <string name="quickadd_undo">Annulla</string>
+    <string name="error_no_calendar">Nessun calendario trovato — c\'è un account configurato?</string>
+    <string name="error_insert_failed">Impossibile creare l\'evento</string>
+    <string name="error_no_permission">Serve l\'accesso al calendario per creare eventi</string>
+    <string name="error_no_calendar_app">Nessuna app calendario per aprire l\'evento — è comunque salvato</string>
+
+    <!-- Строка-итог превью -->
+    <string name="summary_all_day">tutto il giorno</string>
+    <string name="summary_today">oggi</string>
+    <string name="summary_tomorrow">domani</string>
+    <string name="date_locale">it</string>
+    <string name="summary_date_pattern">EEE d MMM</string>
+    <string name="summary_time_pattern">H:mm</string>
+    <string name="summary_reminder_at_event">🔔 all\'inizio</string>
+    <string name="summary_reminder_before">🔔 %1$s prima</string>
+
+    <!-- Главный экран -->
+    <string name="hero_slogan">Niente moduli, niente campi. Di\' solo quando.</string>
+    <string name="hero_description">Una frase — ed è sul tuo calendario.</string>
+    <string name="example_phrase_1">Palestra ogni martedì e venerdì alle 9</string>
+    <string name="example_phrase_2">Cinema domani alle 11 per un\'ora e mezza !10</string>
+    <string name="action_add_widget">Aggiungi widget</string>
+    <string name="action_try">Prova</string>
+    <string name="action_grant">Consenti</string>
+    <string name="action_app_settings">Impostazioni app</string>
+    <string name="action_add_account">Aggiungi account</string>
+    <string name="settings_no_calendars">Nessun calendario trovato — aggiungi un account calendario</string>
+
+    <!-- Настройки -->
+    <string name="settings_calendar">Calendario</string>
+    <string name="settings_calendar_auto">Automatico (principale)</string>
+    <string name="settings_calendar_permission">Consenti l\'accesso al calendario per sceglierne uno</string>
+    <string name="settings_duration">Durata</string>
+    <string name="settings_reminder">Promemoria</string>
+    <string name="reminder_off">No</string>
+    <string name="reminder_at_event">All\'inizio</string>
+    <string name="reminder_hint">Per un singolo evento: \"!10\" direttamente nella frase.</string>
+    <string name="settings_behavior">Alla creazione</string>
+    <string name="setting_nod">Cenno dell\'etichetta</string>
+    <string name="setting_haptic">Vibrazione</string>
+    <string name="action_close">chiudi</string>
+    <string name="action_open_settings">apri le impostazioni</string>
+    <string name="action_open_event">apri nel calendario</string>
+
+    <!-- Подвал About -->
+    <string name="about_source">Codice sorgente</string>
+    <string name="about_issues">Segnala un problema</string>
+    <string name="about_license">Licenza GPL-3.0</string>
+    <string name="about_privacy">Gli eventi vanno solo nel tuo calendario — da nessun\'altra parte.</string>
+    <string name="about_privacy_details">dettagli sulla privacy</string>
+    <string name="about_copy_version">copia versione</string>
+    <string name="settings_theme">Tema</string>
+    <string name="theme_system">Sistema</string>
+    <string name="theme_light">Chiaro</string>
+    <string name="theme_dark">Scuro</string>
+    <string name="settings_language">Lingua</string>
+    <string name="language_system">Sistema</string>
+    <string name="settings_advanced">Avanzate</string>
+    <string name="parser_languages">Lingue di riconoscimento</string>
+    <string name="parser_languages_hint">Predefinito: lingua dell\'interfaccia e inglese.</string>
+    <string name="activity_window">Fascia oraria attiva</string>
+    <string name="activity_window_examples">«alle 9» → %1$d:00 · «alle 7» → %2$d:00</string>
+    <string name="activity_window_hint">In caso di ambiguità vincono gli orari nella fascia attiva.</string>
+    <string name="a11y_expanded">espanso</string>
+    <string name="a11y_collapsed">compresso</string>
+    <string name="version_copied">Versione copiata</string>
+    <string name="unit_hours">h</string>
+    <string name="unit_minutes">min</string>
+</resources>
