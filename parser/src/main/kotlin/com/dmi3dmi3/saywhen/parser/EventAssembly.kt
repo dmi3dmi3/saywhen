@@ -6,13 +6,6 @@ import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 
-/**
- * Языконезависимая сборка события из IR-кандидатов: клеймы и поглощение
- * предлогов-сирот, базовая дата и якоря повторов, 12-часовой круг
- * ([TwelveHourClock]), сдвиги «время в будущем», итоговое RRULE, вырезание
- * заголовка. Ни одного слова конкретного языка — язык кончается на границе
- * [Translator].
- */
 internal object EventAssembly {
 
     private class Claim(var tokens: IntRange, val field: TokenMatch.Field)
@@ -40,15 +33,13 @@ internal object EventAssembly {
         val time = extraction.time
         rec?.let { r ->
             take(r.tokens, TokenMatch.Field.RECURRENCE)
-            r.extraTokens.forEach { take(it, TokenMatch.Field.RECURRENCE) }  // «до конца августа», «10 раз»
+            r.extraTokens.forEach { take(it, TokenMatch.Field.RECURRENCE) }
         }
         date?.let { take(it.tokens, TokenMatch.Field.DATE) }
         time?.let { take(it.tokens, TokenMatch.Field.TIME) }
         extraction.duration?.let { take(it.tokens, TokenMatch.Field.DURATION) }
         extraction.reminder?.let { take(it.tokens, TokenMatch.Field.REMINDER) }
 
-        // поглощение осиротевших предлогов (справа налево — цепочки каскадом);
-        // к заблокированному соседу не липнем — он останется в заголовке
         for (i in tokens.indices.reversed()) {
             if (!used[i] && tokens[i].lower in orphanWords &&
                 used.getOrNull(i + 1) == true && !blocked[i + 1]
@@ -58,18 +49,14 @@ internal object EventAssembly {
             }
         }
 
-        // база — явная дата или сегодня; повтор подтягивает её к своему якорю
         val baseDate = date?.date ?: now.toLocalDate()
         val startDate = rec?.resolveStartDate(baseDate) ?: baseDate
         val allDay = time == null
-        // половина суток от контекста («tonight», «every morning») снимает пару круга
         val dayHalf = rec?.dayHalf ?: date?.dayHalf
         var start = when {
             allDay -> startDate.atStartOfDay(now.zone)
             time!!.twelveHour && dayHalf != null -> {
                 val hour = dayHalf.resolve(time.time.hour)
-                // «12 вечера/ночи» — наступающая полночь (контракт DayHalf),
-                // иначе «сегодня ночью в 12» оказалось бы прошедшим 00:00
                 val date = if (dayHalf == DayHalf.EVENING && time.time.hour == 12) {
                     startDate.plusDays(1)
                 } else {
@@ -77,30 +64,23 @@ internal object EventAssembly {
                 }
                 date.atTime(time.time.withHour(hour)).atZone(now.zone)
             }
-            // 12-часовой круг: окно активности решает пару, «сейчас» не участвует —
-            // прошедшее без явной даты уезжает вперёд общим сдвигом ниже
             time.twelveHour -> TwelveHourClock.resolve(time.time, startDate, now.zone, activityWindow)
             else -> startDate.atTime(time.time).atZone(now.zone)
         }
 
-        // «время в будущем»: сдвигаем только когда дата не была сказана явно
         if (!allDay && !start.isAfter(now)) {
             start = when {
                 rec != null -> {
                     val next = rec.nextOccurrence(startDate)
-                    // серия уже закончилась (UNTIL раньше следующего вхождения) —
-                    // старт за UNTIL не гоним, иначе создалась бы пустая серия
                     if (rec.untilDate != null && next.isAfter(rec.untilDate)) start
                     else next.atTime(start.toLocalTime()).atZone(now.zone)
                 }
-                date == null -> start.plusDays(1)           // «в 14» ровно сейчас → завтра
-                date.fromWeekday -> start.plusWeeks(1)      // «во вторник в 9» → след. вторник
-                else -> start                               // «сегодня в 9» — уважаем
+                date == null -> start.plusDays(1)
+                date.fromWeekday -> start.plusWeeks(1)
+                else -> start
             }
         }
 
-        // диапазон дат «с 23 по 28 августа» — длительность в днях, конец включительно;
-        // при явном времени диапазон не действует — timed-событие на дату старта
         val rangeDuration = date?.endDate
             ?.takeIf { allDay }
             ?.let { Duration.ofDays(ChronoUnit.DAYS.between(date.date, it) + 1) }
@@ -111,7 +91,6 @@ internal object EventAssembly {
             allDay = allDay,
             duration = time?.duration ?: extraction.duration?.duration ?: rangeDuration,
             rrule = rec?.let { finalRrule(it, allDay, now) },
-            // гейт all-day (напоминание не ставим) — app-слой; ядро честно отдаёт форму
             reminderMinutes = extraction.reminder?.minutes,
             matches = claims
                 .map { TokenMatch(charSpan(tokens, it.tokens), it.field) }
@@ -119,11 +98,6 @@ internal object EventAssembly {
         )
     }
 
-    /**
-     * Итоговое RRULE: база + UNTIL/COUNT. UNTIL для all-day — дата, для timed —
-     * конец дня в зоне пользователя, переведённый в UTC (гоча провайдера:
-     * timed-UNTIL обязан быть с 'Z').
-     */
     private fun finalRrule(rec: RecurrenceCandidate, allDay: Boolean, now: ZonedDateTime): String {
         val until = rec.untilDate?.let { d ->
             if (allDay) DateTimeFormatter.BASIC_ISO_DATE.format(d)
@@ -140,7 +114,6 @@ internal object EventAssembly {
 
     private val UNTIL_UTC: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'")
 
-    /** Текст минус занятые токены (кроме заблокированных); края — без висячей пунктуации. */
     private fun buildTitle(
         text: String,
         tokens: List<Token>,
@@ -153,19 +126,14 @@ internal object EventAssembly {
             if (used[i] && !blocked[i]) sb.delete(tokens[i].range.first, tokens[i].range.last + 1)
         }
         return sb.toString()
-            // апостроф-сирота вырезанного «un'ora» (токенайзер режет по нему)
             .replace(Regex("""(?:^|(?<=\s))['’]+(?=\s|$)"""), "")
             .replace(Regex("\\s+"), " ")
-            // «встреча , обед» → «встреча, обед»; «!» перед цифрой не клеим —
-            // это остаток формы напоминания («!10x»), не пунктуация
             .replace(Regex(""" ([,.;:?]|!(?!\d))"""), "$1")
-            .replace(Regex(",{2,}"), ",")         // следы двух вырезов подряд
+            .replace(Regex(",{2,}"), ",")
             .trim { it.isWhitespace() || it in ",.;:—-" }
-            // остаток без букв и цифр (апостроф между вырезанными токенами) — не заголовок
             .let { if (it.any(Char::isLetterOrDigit)) it else defaultTitle }
     }
 
-    /** Символьный диапазон от первого до последнего токена. */
     private fun charSpan(tokens: List<Token>, range: IntRange): IntRange =
         tokens[range.first].range.first..tokens[range.last].range.last
 }

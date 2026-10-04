@@ -1,15 +1,14 @@
 package com.dmi3dmi3.saywhen.quickadd
 
 import android.os.Bundle
+import android.provider.CalendarContract
 import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
 import com.dmi3dmi3.saywhen.ui.SayWhenTheme
 
-/** Полупрозрачное окно быстрого ввода; открывается виджетом (задача 10). */
 class QuickAddActivity : AppCompatActivity() {
 
     companion object {
-        /** Предзаполнение поля — тапабельные примеры главного экрана (задача 18). */
         const val EXTRA_PREFILL = "prefill"
     }
 
@@ -19,7 +18,11 @@ class QuickAddActivity : AppCompatActivity() {
             SayWhenTheme {
                 QuickAddScreen(
                     onClose = { finish() },
-                    prefill = intent.getStringExtra(EXTRA_PREFILL),
+                    prefill = prefillFor(
+                        action = intent.action,
+                        prefill = intent.getStringExtra(EXTRA_PREFILL),
+                        insertTitle = intent.getStringExtra(CalendarContract.Events.TITLE),
+                    ),
                 )
             }
         }

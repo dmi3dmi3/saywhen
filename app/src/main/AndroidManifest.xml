@@ -9,7 +9,6 @@
         android:localeConfig="@xml/locales_config"
         android:theme="@style/Theme.SayWhen">
 
-        <!-- persist выбора языка на API < 33 (autoStoreLocales) -->
         <service
             android:name="androidx.appcompat.app.AppLocalesMetadataHolderService"
             android:enabled="false"
@@ -18,9 +17,7 @@
                 android:name="autoStoreLocales"
                 android:value="true" />
         </service>
-        <!-- configChanges="locale|layoutDirection": на Android 13+ смена языка
-             не пересоздаёт активити — Compose пересоставляет строки на месте
-             (плавно, без мигания); до 13 — штатная рекреация -->
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -29,9 +26,10 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
         </activity>
-        <!-- taskAffinity="" — своя задача: тап по виджету не поднимает
-             MainActivity, под полупрозрачным окном остаётся лаунчер -->
         <activity
             android:name=".quickadd.QuickAddActivity"
             android:exported="true"
@@ -40,6 +38,31 @@
             android:configChanges="locale|layoutDirection"
             android:theme="@style/Theme.SayWhen.Dialog"
             android:windowSoftInputMode="adjustResize" />
+
+        <activity-alias
+            android:name=".quickadd.QuickAddLauncher"
+            android:targetActivity=".quickadd.QuickAddActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:label="@string/widget_label"
+            android:icon="@mipmap/ic_launcher_add">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".quickadd.QuickAddInsert"
+            android:targetActivity=".quickadd.QuickAddActivity"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.INSERT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="vnd.android.cursor.dir/event" />
+            </intent-filter>
+        </activity-alias>
         <receiver
             android:name=".widget.SayWhenWidgetProvider"
             android:exported="false"

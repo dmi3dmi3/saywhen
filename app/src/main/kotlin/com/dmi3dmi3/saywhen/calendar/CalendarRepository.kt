@@ -10,16 +10,11 @@ data class CalendarInfo(
     val accountType: String,
     val ownerAccount: String,
     val isPrimary: Boolean,
-    val color: Int = 0,  // ARGB из провайдера; 0 — не задан
+    val color: Int = 0,
 ) {
     val isGoogle: Boolean get() = accountType == "com.google"
 }
 
-/**
- * Каскад выбора: primary Google → любой primary → Google-календарь владельца →
- * любой календарь владельца → первый записываемый. IS_PRIMARY на части
- * устройств врёт или отсутствует — поэтому fallback'и (спека, «Запись в календарь»).
- */
 internal fun pickDefaultCalendar(calendars: List<CalendarInfo>): CalendarInfo? =
     calendars.firstOrNull { it.isPrimary && it.isGoogle }
         ?: calendars.firstOrNull { it.isPrimary }
@@ -29,7 +24,6 @@ internal fun pickDefaultCalendar(calendars: List<CalendarInfo>): CalendarInfo? =
 
 class CalendarRepository(private val resolver: ContentResolver) {
 
-    /** Календари, в которые можно писать (уровень доступа от CONTRIBUTOR). */
     fun writableCalendars(): List<CalendarInfo> {
         val projection = arrayOf(
             Calendars._ID,

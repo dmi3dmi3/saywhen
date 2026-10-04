@@ -1,12 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Немецкая локаль UI (задача 28); перевод агентский, без нейтивной вычитки. -->
 
-    <!-- Виджет -->
     <string name="widget_label">+ Termin</string>
     <string name="widget_description">Schneller Termin aus Text</string>
 
-    <!-- Окно быстрого ввода -->
     <string name="quickadd_placeholder">Titel des Termins</string>
     <string name="quickadd_create">Erstellen</string>
     <string name="quickadd_created">Erstellt ✓ %1$s</string>
@@ -16,7 +13,6 @@
     <string name="error_no_permission">Kalenderzugriff wird benötigt, um Termine zu erstellen</string>
     <string name="error_no_calendar_app">Keine Kalender-App zum Öffnen — der Termin ist trotzdem gespeichert</string>
 
-    <!-- Строка-итог превью -->
     <string name="summary_all_day">ganztägig</string>
     <string name="summary_today">heute</string>
     <string name="summary_tomorrow">morgen</string>
@@ -26,19 +22,19 @@
     <string name="summary_reminder_at_event">🔔 bei Beginn</string>
     <string name="summary_reminder_before">🔔 %1$s vorher</string>
 
-    <!-- Главный экран -->
     <string name="hero_slogan">Keine Formulare, keine Felder. Sag einfach wann.</string>
     <string name="hero_description">Ein Satz — und er steht im Kalender.</string>
     <string name="example_phrase_1">Sport jeden Dienstag und Freitag um 9</string>
     <string name="example_phrase_2">Kino morgen um 11 für anderthalb Stunden !10</string>
     <string name="action_add_widget">Widget hinzufügen</string>
     <string name="action_try">Ausprobieren</string>
+    <string name="launch_icon">Symbol „+ Termin“</string>
+    <string name="launch_icon_hint">Ein zweites Symbol in der App-Liste, es öffnet direkt das Eingabefenster. Manche Launcher zeigen es erst, wenn du die Liste neu öffnest.</string>
     <string name="action_grant">Erlauben</string>
     <string name="action_app_settings">App-Einstellungen</string>
     <string name="action_add_account">Konto hinzufügen</string>
     <string name="settings_no_calendars">Keine Kalender gefunden — füge ein Kalenderkonto hinzu</string>
 
-    <!-- Настройки -->
     <string name="settings_calendar">Kalender</string>
     <string name="settings_calendar_auto">Automatisch (primär)</string>
     <string name="settings_calendar_permission">Erlaube Kalenderzugriff, um einen auszuwählen</string>
@@ -54,7 +50,6 @@
     <string name="action_open_settings">Einstellungen öffnen</string>
     <string name="action_open_event">im Kalender öffnen</string>
 
-    <!-- Подвал About -->
     <string name="about_source">Quellcode</string>
     <string name="about_issues">Problem melden</string>
     <string name="about_license">Lizenz GPL-3.0</string>
@@ -73,6 +68,8 @@
     <string name="activity_window">Aktive Stunden</string>
     <string name="activity_window_examples">„um 9“ → %1$d:00 · „um 7“ → %2$d:00</string>
     <string name="activity_window_hint">Bei Mehrdeutigkeit gewinnen Zeiten innerhalb der aktiven Stunden.</string>
+    <string name="launch_insert">In der Kalenderliste</string>
+    <string name="launch_insert_hint">SayWhen erscheint unter den Kalendern, wenn eine andere App einen Termin anlegt. Aus der Anfrage wird nur der Titel übernommen.</string>
     <string name="a11y_expanded">ausgeklappt</string>
     <string name="a11y_collapsed">eingeklappt</string>
     <string name="version_copied">Version kopiert</string>

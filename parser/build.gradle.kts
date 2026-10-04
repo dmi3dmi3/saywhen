@@ -4,8 +4,6 @@ plugins {
     alias(libs.plugins.kotlin.jvm)
 }
 
-// jvmTarget вместо toolchain: сборщику достаточно любого JDK >= 17
-// (toolchain 17 валил fdroid build — их окружение без авто-провижининга)
 kotlin {
     compilerOptions {
         jvmTarget = JvmTarget.JVM_17

@@ -1,0 +1,6 @@
+SayWhen comprend maintenant les phrases en français. L'interface et la description sont traduites aussi ; merci à acress1 pour l'initiative et l'aide à la traduction de l'interface.
+
+• Français. Écris comme tu le dirais : « réunion demain à 15h30 », « tous les lundis à 9h », « dans 15 jours », « rappelle-moi 10 minutes avant ». La reconnaissance s'active avec la langue de l'interface, ou séparément dans les paramètres avancés.
+• Icône « + évènement ». Une deuxième icône dans la liste des applications ouvre directement la fenêtre de saisie. À activer dans les paramètres, à côté du bouton « Ajouter un widget ». Merci à Vikranttiw pour l'idée.
+• Dans la liste des calendriers. SayWhen peut être choisi quand une autre application propose d'ajouter un évènement au calendrier. Seul le titre est repris de la demande, l'heure vient de ta phrase. À activer dans les paramètres avancés. Merci à andrummer pour l'idée.
+• Les langues reconnues retiennent ton choix : une langue activée à la main reste active quand la langue de l'interface change, une langue désactivée à la main reste désactivée. La nouvelle langue de l'interface s'active d'elle-même.

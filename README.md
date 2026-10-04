@@ -3,7 +3,7 @@
 **No forms, no fields. Just say when.**
 
 One phrase — and it's on your calendar. Type it the way you'd say it, in
-English, Russian, Italian, Spanish, or German:
+English, Russian, Italian, Spanish, German, or French:
 
 > Gym every tuesday and friday at 9
 >
@@ -91,7 +91,7 @@ not accepted and pull requests will be closed. Bugs and ideas are welcome in
 **Без форм и полей. Просто скажи когда.**
 
 Одна фраза — и событие в календаре. Пишите так, как сказали бы вслух, на
-русском, английском, итальянском, испанском или немецком:
+русском, английском, итальянском, испанском, немецком или французском:
 
 > Спорт каждый вторник и пятницу в 9
 >

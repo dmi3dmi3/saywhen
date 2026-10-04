@@ -1,17 +1,11 @@
 package com.dmi3dmi3.saywhen.parser
 
-import java.time.DateTimeException
 import java.time.DayOfWeek
 import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.Period
-
-/*
- * IR — смысловые кандидаты. Транслятор языка выставляет значения и флаги,
- * ничего не решая про итоговое событие; сборка ([EventAssembly]) интерпретирует
- * флаги, ничего не зная про формы языка.
- */
+import java.time.temporal.ChronoUnit
 
 private val byDayCodes = mapOf(
     DayOfWeek.MONDAY to "MO", DayOfWeek.TUESDAY to "TU", DayOfWeek.WEDNESDAY to "WE",
@@ -19,7 +13,11 @@ private val byDayCodes = mapOf(
     DayOfWeek.SUNDAY to "SU",
 )
 
-/** Недельный повтор по набору дней — RRULE-знание, общее для трансляторов. */
+internal val workdays: Set<DayOfWeek> = setOf(
+    DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY,
+)
+internal val weekend: Set<DayOfWeek> = setOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY)
+
 internal fun weeklyRecurrence(days: Set<DayOfWeek>, range: IntRange) = RecurrenceCandidate(
     "FREQ=WEEKLY;BYDAY=" + days.sorted().joinToString(",") { byDayCodes.getValue(it) },
     range,
@@ -27,11 +25,6 @@ internal fun weeklyRecurrence(days: Set<DayOfWeek>, range: IntRange) = Recurrenc
     anchorDays = days,
 )
 
-/**
- * Месячный повтор по порядковому дню недели: «первый понедельник месяца» →
- * BYDAY=1MO, «последняя пятница» → BYDAY=-1FR. RRULE-знание, общее для
- * трансляторов; ord — 1..5 или -1 (последний).
- */
 internal fun ordinalMonthlyRecurrence(ord: Int, day: DayOfWeek, range: IntRange) = RecurrenceCandidate(
     "FREQ=MONTHLY;BYDAY=$ord${byDayCodes.getValue(day)}",
     range,
@@ -40,7 +33,6 @@ internal fun ordinalMonthlyRecurrence(ord: Int, day: DayOfWeek, range: IntRange)
     anchorDays = setOf(day),
 )
 
-/** Шаг повтора из FREQ и интервала — RRULE-знание, общее для трансляторов. */
 internal fun periodOf(freq: String, n: Int): Period = when (freq) {
     "DAILY" -> Period.ofDays(n)
     "WEEKLY" -> Period.ofWeeks(n)
@@ -48,112 +40,90 @@ internal fun periodOf(freq: String, n: Int): Period = when (freq) {
     else -> Period.ofYears(n)
 }
 
-/**
- * Половина суток как подсказка 12-часовому кругу: «tonight at 8» → вечер,
- * «every morning at 7» → утро. Семантика 12 — как у явных «утра/вечера»:
- * 12 утра — полночь, 12 вечера — наступающая полночь.
- */
+internal fun freqOf(unit: ChronoUnit): String = when (unit) {
+    ChronoUnit.DAYS -> "DAILY"
+    ChronoUnit.WEEKS -> "WEEKLY"
+    ChronoUnit.MONTHS -> "MONTHLY"
+    else -> "YEARLY"
+}
+
+internal fun isMonthOrdinal(ord: Int): Boolean = ord in 1..5 || ord == -1
+
 internal enum class DayHalf {
     MORNING { override fun resolve(h: Int) = if (h == 12) 0 else h },
-    // «днём/afternoon/pomeriggio/tarde/nachmittag»: 12 — полдень, не полночь
     AFTERNOON { override fun resolve(h: Int) = if (h < 12) h + 12 else 12 },
     EVENING { override fun resolve(h: Int) = if (h < 12) h + 12 else 0 };
     abstract fun resolve(h: Int): Int
 }
 
-/** Кандидат в дату события; endDate != null у диапазона «с 23 по 28 августа». */
 internal data class DateCandidate(
     val date: LocalDate,
     val tokens: IntRange,
-    val endDate: LocalDate? = null,    // последний день диапазона, включительно
-    val fromWeekday: Boolean = false,  // дата выведена из дня недели → сдвигаема на неделю
-    val dayHalf: DayHalf? = null,      // «tonight» — вечер для часа круга
+    val endDate: LocalDate? = null,
+    val fromWeekday: Boolean = false,
+    val dayHalf: DayHalf? = null,
     val confidence: Confidence = Confidence.EXPLICIT,
 )
 
-/**
- * Диапазон дат — знание, общее для трансляторов. Год решает конец (прошёл →
- * следующий, как у одиночной даты; начало при этом может быть в прошлом —
- * событие уже идёт), начало — тот же год: диапазон через новый год не берём.
- * Конец не позже начала или дата невалидна — не диапазон.
- */
 internal fun dateRangeCandidate(
     today: LocalDate,
+    tokens: List<Token>,
     startDay: Int, startMonth: Int,
     endDay: Int, endMonth: Int,
     range: IntRange,
 ): DateCandidate? {
-    val thisYear = localDateOrNull(today.year, endMonth, endDay)
-    val end = if (thisYear != null && !thisYear.isBefore(today)) thisYear
-              else localDateOrNull(today.year + 1, endMonth, endDay) ?: return null
-    val start = localDateOrNull(end.year, startMonth, startDay) ?: return null
+    val year = yearToken(tokens.getOrNull(range.last + 1)?.lower)
+    val end = (if (year != null) dateOrNull(year, endMonth, endDay) else upcomingDate(today, endMonth, endDay))
+        ?: return null
+    val start = dateOrNull(end.year, startMonth, startDay) ?: return null
     if (!end.isAfter(start)) return null
-    return DateCandidate(start, range, endDate = end)
+    return DateCandidate(start, if (year != null) range.first..range.last + 1 else range, endDate = end)
 }
 
-/** Явный год «2027» — четыре цифры разумного горизонта; иначе null. */
 internal fun yearToken(s: String?): Int? =
-    s?.takeIf { it.length == 4 }?.toIntOrNull()?.takeIf { it in 1970..2100 }
+    s?.takeIf { it.length == 4 }?.toIntOrNull()?.takeIf { it in YEARS }
 
-// «23-28» / «23 - 28» / «13. - 15.» — токенайзер держит пару дней одним токеном
 private val dayPairPattern = Regex("""(\d{1,2})\.?\s*-\s*(\d{1,2})\.?""")
 
-/** Пара дней «23-28» из одного токена; вне 1..31 — не пара. */
 internal fun dayPair(s: String?): Pair<Int, Int>? {
     val m = s?.let { dayPairPattern.matchEntire(it) } ?: return null
     val (d1, d2) = m.destructured
-    return (d1.toInt() to d2.toInt()).takeIf { it.first in 1..31 && it.second in 1..31 }
+    return (d1.toInt() to d2.toInt()).takeIf { it.first in DAY_OF_MONTH && it.second in DAY_OF_MONTH }
 }
 
-private fun localDateOrNull(year: Int, month: Int, day: Int): LocalDate? =
-    try {
-        LocalDate.of(year, month, day)
-    } catch (e: DateTimeException) {
-        null
-    }
-
-/** Кандидат во время начала; duration != null у интервала «с X до Y». */
 internal data class TimeCandidate(
     val time: LocalTime,
     val duration: Duration?,
     val tokens: IntRange,
-    val twelveHour: Boolean = false,  // час круга 1..12 без уточнения → пара {h, h+12}
+    val twelveHour: Boolean = false,
     val confidence: Confidence = Confidence.EXPLICIT,
 )
 
-/** Кандидат в напоминание: минуты до начала («!10», «напомни за 10 минут»). */
 internal data class ReminderCandidate(
     val minutes: Int,
     val tokens: IntRange,
     val confidence: Confidence = Confidence.EXPLICIT,
 )
 
-/** Кандидат в длительность: «на час», «на 30 минут». */
 internal data class DurationCandidate(
     val duration: Duration,
     val tokens: IntRange,
     val confidence: Confidence = Confidence.EXPLICIT,
 )
 
-/**
- * Кандидат в повтор: базовое RRULE + якорь для даты старта. Конец повтора
- * ([untilDate]/[count]) хранится данными, а не строкой: формат UNTIL зависит
- * от all-day/зоны — итоговое правило собирает сборка.
- */
 internal data class RecurrenceCandidate(
     val rrule: String,
     val tokens: IntRange,
-    val period: Period,                           // шаг повтора («каждые 2 недели» → 2 недели)
-    val anchorDays: Set<DayOfWeek> = emptySet(),  // «каждый вторник», «по будням»
-    val anchorMonthDay: Int? = null,              // «каждое 15 число»
-    val anchorOrdinal: Int? = null,               // «второе воскресенье месяца»: 1..5 | -1, с anchorDays
-    val untilDate: LocalDate? = null,             // «до конца августа», «до 15 сентября»
-    val count: Int? = null,                       // «10 раз»
-    val extraTokens: List<IntRange> = emptyList(),  // хвост конца — не смежен с основным матчем
-    val dayHalf: DayHalf? = null,                 // «every morning» — утро для часа круга
+    val period: Period,
+    val anchorDays: Set<DayOfWeek> = emptySet(),
+    val anchorMonthDay: Int? = null,
+    val anchorOrdinal: Int? = null,
+    val untilDate: LocalDate? = null,
+    val count: Int? = null,
+    val extraTokens: List<IntRange> = emptyList(),
+    val dayHalf: DayHalf? = null,
     val confidence: Confidence = Confidence.EXPLICIT,
 ) {
-    /** Первая дата ≥ base, попадающая в повтор. */
     fun resolveStartDate(base: LocalDate): LocalDate {
         var d = base
         when {
@@ -165,18 +135,12 @@ internal data class RecurrenceCandidate(
         return d
     }
 
-    /** d — «anchorOrdinal-й anchorDay своего месяца» (-1 — последний). */
     private fun isOrdinalDay(d: LocalDate): Boolean {
         if (d.dayOfWeek !in anchorDays) return false
         return if (anchorOrdinal!! > 0) (d.dayOfMonth - 1) / 7 + 1 == anchorOrdinal
         else d.month != d.plusWeeks(1).month
     }
 
-    /**
-     * Следующее вхождение после from. У повтора без якоря это from + период —
-     * не «+1 день»: иначе «каждую неделю в 9», сказанное во вторник после
-     * девяти, навсегда стало бы «каждую среду».
-     */
     fun nextOccurrence(from: LocalDate): LocalDate = when {
         anchorMonthDay != null || anchorDays.isNotEmpty() -> resolveStartDate(from.plusDays(1))
         else -> from.plus(period)

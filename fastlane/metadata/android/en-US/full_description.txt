@@ -1,6 +1,6 @@
 No forms, no fields. Just say when.
 
-Type an event the way you'd say it, in English, Russian, Italian, Spanish, or German:
+Type an event the way you'd say it, in English, Russian, Italian, Spanish, German, or French:
 
 • Gym every tuesday and friday at 9
 • Movie tomorrow at 11 for 1.5h !10

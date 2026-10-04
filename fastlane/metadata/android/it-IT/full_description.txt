@@ -1,6 +1,6 @@
 Niente moduli, niente campi. Di' solo quando.
 
-Scrivi l'evento come lo diresti, in italiano, inglese, russo, spagnolo o tedesco:
+Scrivi l'evento come lo diresti, in italiano, inglese, russo, spagnolo, tedesco o francese:
 
 • Palestra ogni martedì e venerdì alle 9
 • Cinema domani alle 11 per un'ora e mezza !10

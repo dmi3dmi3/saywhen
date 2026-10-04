@@ -97,6 +97,7 @@ import com.dmi3dmi3.saywhen.parser.ParsedEvent
 import com.dmi3dmi3.saywhen.parser.TokenMatch
 import com.dmi3dmi3.saywhen.settings.Settings
 import com.dmi3dmi3.saywhen.settings.SettingsRepository
+import com.dmi3dmi3.saywhen.settings.migrateParserLanguages
 import com.dmi3dmi3.saywhen.settings.parserOrder
 import java.time.Duration
 import java.time.ZonedDateTime
@@ -104,10 +105,8 @@ import java.util.Locale
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 
-// единый левый/правый инсет ярлычка и подноса относительно поля (мокапы 19b)
 private val EDGE_INSET = 10.dp
 
-/** Кнопка действия у ошибки: настройки приложения или добавление аккаунта. */
 @Composable
 internal fun ErrorActionButton(action: ErrorAction) {
     val context = LocalContext.current
@@ -132,10 +131,8 @@ internal fun ErrorActionButton(action: ErrorAction) {
     }
 }
 
-/** Действие при ошибке — тупиков «сообщение без кнопки» нет (задача 18). */
 internal enum class ErrorAction { APP_SETTINGS, ADD_ACCOUNT }
 
-/** Последнее созданное событие; исходная фраза и стоп-лист — для отмены с правкой. */
 internal data class Created(
     val id: Long,
     val title: String,
@@ -148,14 +145,18 @@ fun QuickAddScreen(onClose: () -> Unit, prefill: String? = null) {
     val context = LocalContext.current
     val settingsRepo = remember { SettingsRepository(context) }
     val settings by settingsRepo.settings.collectAsState(initial = Settings())
-    // парсер из настроек: языки (30) + окно активности (30a)
     val uiLanguage = stringResource(R.string.date_locale)
+    LaunchedEffect(settings.parserLanguages) {
+        if (settings.parserLanguages != null) settingsRepo.migrateParserLanguages(uiLanguage)
+    }
+    val (parserOn, parserOff) = settings.parserLanguages?.let { migrateParserLanguages(it, uiLanguage) }
+        ?: (settings.parserOn to settings.parserOff)
     val parser = remember(
-        settings.parserLanguages, uiLanguage,
+        parserOn, parserOff, uiLanguage,
         settings.activityStartHour, settings.activityEndHour,
     ) {
         MultilingualEventParser(
-            parserOrder(uiLanguage, settings.parserLanguages),
+            parserOrder(uiLanguage, parserOn, parserOff),
             settings.activityStartHour until settings.activityEndHour,
         )
     }
@@ -163,16 +164,14 @@ fun QuickAddScreen(onClose: () -> Unit, prefill: String? = null) {
     var value by remember {
         mutableStateOf(TextFieldValue(prefill.orEmpty(), TextRange(prefill.orEmpty().length)))
     }
-    var blocked by remember { mutableStateOf(emptyList<IntRange>()) }  // стоп-лист (задача 12)
+    var blocked by remember { mutableStateOf(emptyList<IntRange>()) }
     var error by remember { mutableStateOf<Pair<String, ErrorAction?>?>(null) }
     var created by remember { mutableStateOf<Created?>(null) }
-    // автозакрытие живо, только пока после создания не было ввода (серийный ввод)
     var autoClose by remember { mutableStateOf(false) }
     val parsed = remember(value.text, blocked, parser) { parser.parse(value.text, ZonedDateTime.now(), blocked) }
 
     fun create() {
         val repo = CalendarRepository(context.contentResolver)
-        // выбранный в настройках календарь; если он исчез — авто-каскад
         val calendar = settings.calendarId
             ?.let { id -> repo.writableCalendars().firstOrNull { it.id == id } }
             ?: repo.defaultCalendar()
@@ -188,7 +187,7 @@ fun QuickAddScreen(onClose: () -> Unit, prefill: String? = null) {
         if (id == null) {
             error = context.getString(R.string.error_insert_failed) to null
         } else {
-            requestCalendarSync(calendar)  // чтобы событие уехало на сервер сразу
+            requestCalendarSync(calendar)
             created = Created(id, event.title, value.text, blocked)
             value = TextFieldValue("")
             blocked = emptyList()
@@ -214,7 +213,6 @@ fun QuickAddScreen(onClose: () -> Unit, prefill: String? = null) {
         )
     }
 
-    // тап по фону — отмена
     Box(
         Modifier
             .fillMaxSize()
@@ -227,8 +225,6 @@ fun QuickAddScreen(onClose: () -> Unit, prefill: String? = null) {
             .imePadding(),
         contentAlignment = Alignment.BottomCenter,
     ) {
-        // одиночный сценарий: ничего не ввёл после создания → окно закрывается
-        // само; таймаут — системный (скринридер/«время на действие» растягивают)
         val autoCloseMillis = remember {
             val am = context.getSystemService(AccessibilityManager::class.java)
             if (Build.VERSION.SDK_INT >= 29 && am != null) {
@@ -243,7 +239,6 @@ fun QuickAddScreen(onClose: () -> Unit, prefill: String? = null) {
                 onClose()
             }
         }
-        // тактильное «создано» — отклик не глядя на экран, в пару к кивку
         val view = LocalView.current
         LaunchedEffect(created) {
             if (created != null && settings.hapticEnabled) {
@@ -256,14 +251,11 @@ fun QuickAddScreen(onClose: () -> Unit, prefill: String? = null) {
         InputConstruction(
             value = value,
             onValueChange = { raw ->
-                // поле многострочное (длинные фразы переносятся), поэтому Enter
-                // физической клавиатуры приходит переносом строки — превращаем
-                // его в «Создать» (Enter = Create, чеклист serial-add)
                 val new = if ('\n' in raw.text) {
                     val cleaned = raw.text.replace("\n", "")
                     if (cleaned == value.text) {
                         if (value.text.isNotBlank()) createWithPermissions()
-                        null  // чистый Enter — текст не меняется
+                        null
                     } else {
                         raw.copy(text = cleaned, selection = TextRange(cleaned.length))
                     }
@@ -271,12 +263,11 @@ fun QuickAddScreen(onClose: () -> Unit, prefill: String? = null) {
                     raw
                 }
                 if (new != null) {
-                    // жесты исключения (тап/backspace) перехватываются здесь
                     val (next, nextBlocked) = applyEdit(value, new, blocked, parsed.matches)
                     value = next
                     blocked = nextBlocked
                     error = null
-                    autoClose = false  // печатает серию — таймер снят насовсем
+                    autoClose = false
                 }
             },
             parsed = parsed,
@@ -286,18 +277,12 @@ fun QuickAddScreen(onClose: () -> Unit, prefill: String? = null) {
             error = error,
             created = created,
             onCreate = ::createWithPermissions,
-            // тап по «Создано» — открыть событие глазами; уход в календарь
-            // завершает сценарий, окно закрываем
             onOpenCreated = {
                 created?.let { done ->
                     try {
                         context.startActivity(
-                            // MIME явно: без него системе нужен getType() провайдера,
-                            // невидимого без <queries> (Android 11+), и резолв уходит
-                            // мимо календаря (ревью F-Droid)
                             Intent(Intent.ACTION_VIEW).setDataAndType(
                                 ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, done.id),
-                                // у CalendarContract.Events нет константы item-типа
                                 "vnd.android.cursor.item/event",
                             ),
                         )
@@ -310,7 +295,6 @@ fun QuickAddScreen(onClose: () -> Unit, prefill: String? = null) {
             onUndo = {
                 created?.let { done ->
                     CalendarWriter(context.contentResolver).delete(done.id)
-                    // фраза и стоп-лист возвращаются в поле для правки
                     value = TextFieldValue(done.sourceText, TextRange(done.sourceText.length))
                     blocked = done.blocked
                     created = null
@@ -321,7 +305,6 @@ fun QuickAddScreen(onClose: () -> Unit, prefill: String? = null) {
     }
 }
 
-/** Силуэт 19b: этикетка → поле (верхняя кромка) → поднос. */
 @Composable
 private fun InputConstruction(
     value: TextFieldValue,
@@ -338,17 +321,12 @@ private fun InputConstruction(
 ) {
     val focusRequester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
-    // клавиатуру поднимаем после окончания анимации открытия (зум лаунчера
-    // от виджета неотключаем) — иначе две анимации накладываются и дёргаются;
-    // подъём карточки к клавиатуре дальше анимирует imePadding синхронно с IME
     LaunchedEffect(Unit) {
         delay(300)
         focusRequester.requestFocus()
         keyboard?.show()
     }
 
-    // фокус поля поднят сюда: рамка ярлычка красится тем же цветом, что рамка
-    // поля — пересечение их контуров невидимо (фидбек владельца, v1.5.0)
     val fieldInteraction = remember { MutableInteractionSource() }
     val focused by fieldInteraction.collectIsFocusedAsState()
     val borderColor =
@@ -360,8 +338,6 @@ private fun InputConstruction(
             .widthIn(max = 420.dp)
             .fillMaxWidth()
             .padding(12.dp)
-            // глушим тапы, чтобы не проваливались в фон-«закрыть»; не clickable —
-            // тот создаёт для скринридера громадную безымянную цель-пустышку
             .pointerInput(Unit) { detectTapGestures {} },
     ) {
         WordmarkTab(created = created, nodEnabled = nodEnabled, borderColor = borderColor)
@@ -389,11 +365,6 @@ private fun InputConstruction(
     }
 }
 
-/**
- * Ярлычок-этикетка на рамке поля: единственное место имени, тап — настройки,
- * кивает на «создано» (гейты: настройка и системные анимации). Нижняя кромка
- * перекрывает рамку поля на толщину линии — плашка «сидит» на границе.
- */
 @Composable
 private fun WordmarkTab(created: Created?, nodEnabled: Boolean, borderColor: Color) {
     val context = LocalContext.current
@@ -410,8 +381,6 @@ private fun WordmarkTab(created: Created?, nodEnabled: Boolean, borderColor: Col
             )
         }
     }
-    // не Surface(onClick): он раздувает layout до touch-цели 48dp и плашка
-    // «отрывается» от поля — кликабельность внутри, без инфляции
     Surface(
         shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp),
         color = MaterialTheme.colorScheme.surfaceBright,
@@ -436,7 +405,6 @@ private fun WordmarkTab(created: Created?, nodEnabled: Boolean, borderColor: Col
     }
 }
 
-/** Поле — верхняя кромка конструкции; пилюли подсветки рисуются под текстом. */
 @Composable
 private fun InputField(
     value: TextFieldValue,
@@ -465,8 +433,6 @@ private fun InputField(
         modifier = Modifier
             .fillMaxWidth()
             .focusRequester(focusRequester)
-            // плейсхолдер — просто Text в decorationBox; для скринридера
-            // связываем его с пустым полем вручную
             .semantics { if (value.text.isEmpty()) contentDescription = placeholder },
         decorationBox = { inner ->
             Box(
@@ -488,14 +454,6 @@ private fun InputField(
     )
 }
 
-/**
- * Скруглённые пилюли под распознанными диапазонами (19b, вместо квадратных
- * спанов): по границам строк из TextLayoutResult, многострочность —
- * посегментно. Смежные диапазоны (между ними только пробелы) сливаются в
- * одну пилюлю — граница «понял/не понял» остаётся единственным визуальным
- * событием, без ряби зазоров; вертикальный инсет отличает маркер от
- * системного выделения текста.
- */
 private fun DrawScope.drawPills(
     layout: TextLayoutResult?,
     matches: List<TokenMatch>,
@@ -537,7 +495,6 @@ private fun DrawScope.drawPills(
     }
 }
 
-/** Поднос: одна зона «итог + Создать», высота констант (резерв двух строк). */
 @Composable
 private fun Tray(
     parsed: ParsedEvent,
@@ -561,7 +518,6 @@ private fun Tray(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         message,
-                        // появление ошибки озвучивается скринридером само
                         Modifier.weight(1f).semantics { liveRegion = LiveRegionMode.Polite },
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodySmall,
@@ -580,11 +536,7 @@ private fun Tray(
                                 stringResource(R.string.quickadd_created, created.title),
                                 Modifier
                                     .weight(1f)
-                                    // появление «создано» озвучивается само — весь
-                                    // остальной фидбек (кивок, вибрация) невербальный
                                     .semantics { liveRegion = LiveRegionMode.Polite }
-                                    // тап — открыть событие в календаре; «Отменить» — отдельная
-                                    // цель; рипл оставлен — единственный мгновенный отклик тапа
                                     .clickable(
                                         onClickLabel = stringResource(R.string.action_open_event),
                                         role = Role.Button,
@@ -611,7 +563,6 @@ private fun Tray(
     }
 }
 
-/** Строка-итог: полное будущее событие; дефолты — приглушённым. */
 @Composable
 private fun SummaryLine(
     parsed: ParsedEvent,

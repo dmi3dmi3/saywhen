@@ -1,6 +1,6 @@
 Sin formularios, sin campos. Solo di cuándo.
 
-Escribe el evento tal como lo dirías, en español, inglés, ruso, italiano o alemán:
+Escribe el evento tal como lo dirías, en español, inglés, ruso, italiano, alemán o francés:
 
 • Gimnasio cada martes y viernes a las 9
 • Cine mañana a las 11 por hora y media !10

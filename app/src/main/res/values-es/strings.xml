@@ -1,12 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Испанская локаль UI (задача 28); перевод агентский, без нейтивной вычитки. -->
 
-    <!-- Виджет -->
     <string name="widget_label">+ evento</string>
     <string name="widget_description">Evento rápido desde texto</string>
 
-    <!-- Окно быстрого ввода -->
     <string name="quickadd_placeholder">Título del evento</string>
     <string name="quickadd_create">Crear</string>
     <string name="quickadd_created">Creado ✓ %1$s</string>
@@ -16,7 +13,6 @@
     <string name="error_no_permission">Se necesita acceso al calendario para crear eventos</string>
     <string name="error_no_calendar_app">No hay app de calendario para abrir el evento — igualmente está guardado</string>
 
-    <!-- Строка-итог превью -->
     <string name="summary_all_day">todo el día</string>
     <string name="summary_today">hoy</string>
     <string name="summary_tomorrow">mañana</string>
@@ -26,19 +22,19 @@
     <string name="summary_reminder_at_event">🔔 al inicio</string>
     <string name="summary_reminder_before">🔔 %1$s antes</string>
 
-    <!-- Главный экран -->
     <string name="hero_slogan">Sin formularios, sin campos. Solo di cuándo.</string>
     <string name="hero_description">Una frase — y está en tu calendario.</string>
     <string name="example_phrase_1">Gimnasio cada martes y viernes a las 9</string>
     <string name="example_phrase_2">Cine mañana a las 11 por hora y media !10</string>
     <string name="action_add_widget">Añadir widget</string>
     <string name="action_try">Probar</string>
+    <string name="launch_icon">Icono «+ evento»</string>
+    <string name="launch_icon_hint">Un segundo icono en la lista de aplicaciones, abre directamente la ventana de entrada. Algunos launchers lo muestran al volver a abrir la lista.</string>
     <string name="action_grant">Permitir</string>
     <string name="action_app_settings">Ajustes de la app</string>
     <string name="action_add_account">Añadir cuenta</string>
     <string name="settings_no_calendars">No se encontraron calendarios — añade una cuenta de calendario</string>
 
-    <!-- Настройки -->
     <string name="settings_calendar">Calendario</string>
     <string name="settings_calendar_auto">Automático (principal)</string>
     <string name="settings_calendar_permission">Concede acceso al calendario para elegir uno</string>
@@ -54,7 +50,6 @@
     <string name="action_open_settings">abrir ajustes</string>
     <string name="action_open_event">abrir en el calendario</string>
 
-    <!-- Подвал About -->
     <string name="about_source">Código fuente</string>
     <string name="about_issues">Informar de un problema</string>
     <string name="about_license">Licencia GPL-3.0</string>
@@ -73,6 +68,8 @@
     <string name="activity_window">Franja horaria activa</string>
     <string name="activity_window_examples">«a las 9» → %1$d:00 · «a las 7» → %2$d:00</string>
     <string name="activity_window_hint">En caso de ambigüedad ganan las horas dentro de la franja activa.</string>
+    <string name="launch_insert">En la lista de calendarios</string>
+    <string name="launch_insert_hint">SayWhen aparece entre los calendarios cuando otra aplicación añade un evento. De la solicitud solo se toma el título.</string>
     <string name="a11y_expanded">expandido</string>
     <string name="a11y_collapsed">contraído</string>
     <string name="version_copied">Versión copiada</string>

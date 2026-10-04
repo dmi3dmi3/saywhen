@@ -3,14 +3,8 @@ package com.dmi3dmi3.saywhen.parser
 import java.time.Duration
 import java.time.LocalTime
 
-/** Языконезависимый разбор цифрового времени — общий для всех трансляторов. */
 internal object ClockText {
 
-    /**
-     * Склеенный интервал «23:40-23:00» / «10-11:30»; хотя бы одна часть с «:» —
-     * иначе «купить 2-3 батарейки» стало бы интервалом. Отрицательная разница —
-     * через полночь.
-     */
     fun gluedInterval(s: String): Pair<LocalTime, Duration>? {
         if ('-' !in s) return null
         val parts = s.split("-").map { it.trim() }
@@ -18,26 +12,23 @@ internal object ClockText {
         val from = clock(parts[0]) ?: return null
         val to = clock(parts[1]) ?: return null
         if (from == to) return null
-        var d = Duration.between(from, to)
-        if (d < Duration.ZERO) d = d.plusHours(24)
-        return from to d
+        return from to span(from, to)
     }
 
-    /** Минуты отдельным токеном («в 19 30», «11 00»): строго две цифры 00–59. */
+    fun span(from: LocalTime, to: LocalTime): Duration {
+        var d = Duration.between(from, to)
+        if (d < Duration.ZERO) d = d.plusHours(24)
+        return d
+    }
+
     fun pairMinutes(s: String?): Int? =
         s?.takeIf { it.length == 2 }?.toIntOrNull()?.takeIf { it in 0..59 }
 
-    /**
-     * «19.30» → 19:30 — точка как разделитель времени. Только для явного
-     * контекста предлога («в»/"at"): голая пара с точкой — что угодно
-     * («3.08» — дата), временем сама по себе не становится.
-     */
     fun dottedClock(s: String?): LocalTime? =
         s?.takeIf { dottedTime.matches(it) }?.let { clock(it.replace('.', ':')) }
 
     private val dottedTime = Regex("""\d{1,2}\.\d{2}""")
 
-    /** «15» → 15:00, «9:30» → 9:30; иначе null. Минуты — строго две цифры. */
     fun clock(s: String?): LocalTime? {
         s ?: return null
         val parts = s.split(":")

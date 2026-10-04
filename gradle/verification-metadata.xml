@@ -3,10 +3,7 @@
    <configuration>
       <verify-metadata>true</verify-metadata>
       <verify-signatures>false</verify-signatures>
-      <!-- IDE-докачки, в сборку не входящие: sources/javadoc зависимостей и
-           исходники самого Gradle (навигация и отладка скриптов в Android
-           Studio). Доверяем без пинов — иначе синк студии валит верификацию;
-           все исполняемые артефакты остаются под sha256-пинами ниже. -->
+
       <trusted-artifacts>
          <trust file=".*-sources[.]jar" regex="true"/>
          <trust file=".*-javadoc[.]jar" regex="true"/>

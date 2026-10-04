@@ -1,0 +1,17 @@
+Pas de formulaire, pas de champs. Dis juste quand.
+
+Écris l'évènement comme tu le dirais, en français, anglais, russe, italien, espagnol ou allemand :
+
+• Sport tous les mardis et vendredis à 9h
+• Cinéma demain à 11h pour 1h30 !10
+• Dentiste le 3 juin à 12h30
+
+SayWhen analyse la phrase pendant que tu l'écris : date, heure, durée, répétition, un rappel « !10 ». Il affiche en direct ce qu'il a compris et écrit l'évènement directement dans le calendrier de ton choix. Un tap sur le widget de l'écran d'accueil, une phrase, c'est fait.
+
+Privé par construction :
+
+• Pas d'inscription, pas de serveur, pas d'analytics, pas d'identifiants
+• Aucun accès réseau — l'application ne déclare même pas la permission INTERNET
+• Deux permissions en tout : lire la liste de tes calendriers, écrire l'évènement demandé
+
+Les évènements vont dans ton calendrier et nulle part ailleurs. Si ton calendrier appartient à un compte synchronisé, c'est sa propre synchronisation qui envoie l'évènement, exactement comme avec n'importe quelle autre application de calendrier.

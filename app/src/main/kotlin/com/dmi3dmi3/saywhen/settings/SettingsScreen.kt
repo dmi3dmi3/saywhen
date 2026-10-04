@@ -93,25 +93,15 @@ import kotlinx.coroutines.launch
 
 private val DURATION_OPTIONS = listOf(30, 60, 90, 120)
 
-// дефолт-напоминание (задача 29): null — выкл, 0 — в начале события
 private val REMINDER_OPTIONS = listOf(5, 10, 30, 60)
 
-// публичное зеркало (задача 22) — дом релизов и канал фидбека
 private const val REPO_URL = "https://github.com/dmi3dmi3/saywhen"
 
-/**
- * Главный экран по ярлыку (задачи 18, 19a): hero с wordmark и примерами +
- * настройки группами-карточками — всё в один экран. Календарь свёрнут в
- * строку-значение, полный список — в шторке (у людей бывает и десять
- * календарей). Выбранное состояние везде на контрастном primary (design.md).
- */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(onOpenQuickAdd: (prefill: String?) -> Unit) {
     val context = LocalContext.current
     val repo = remember { SettingsRepository(context) }
-    // initial = null: пока DataStore не отдал сохранённое, секции не рисуем —
-    // иначе контролы мигают дефолтом и «перескакивают» на выбранное
     val settingsOrNull by repo.settings.collectAsState(initial = null)
     val scope = rememberCoroutineScope()
 
@@ -139,8 +129,6 @@ fun SettingsScreen(onOpenQuickAdd: (prefill: String?) -> Unit) {
         Modifier.padding(16.dp).verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        // hero: имя → слоган → описание → примеры-доказательства → действия;
-        // каждая строка тише предыдущей
         Icon(
             painterResource(R.drawable.wordmark),
             contentDescription = stringResource(R.string.app_name),
@@ -167,8 +155,6 @@ fun SettingsScreen(onOpenQuickAdd: (prefill: String?) -> Unit) {
             }
         }
 
-        // FlowRow: на крупном шрифте вторая кнопка переносится вниз целиком,
-        // а не ломает слово внутри пилюли («Попробоват/ь»)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             val widgetManager = remember { context.getSystemService(AppWidgetManager::class.java) }
             if (widgetManager?.isRequestPinAppWidgetSupported == true) {
@@ -181,6 +167,13 @@ fun SettingsScreen(onOpenQuickAdd: (prefill: String?) -> Unit) {
             OutlinedButton(onClick = { onOpenQuickAdd(null) }) {
                 Text(stringResource(R.string.action_try))
             }
+        }
+        val launchPaths = remember { LaunchPaths(context) }
+        var iconEnabled by remember { mutableStateOf(launchPaths.isEnabled(LaunchPaths.LAUNCHER)) }
+        var insertEnabled by remember { mutableStateOf(launchPaths.isEnabled(LaunchPaths.INSERT)) }
+        SwitchRow(R.string.launch_icon, iconEnabled, hintRes = R.string.launch_icon_hint) {
+            launchPaths.setEnabled(LaunchPaths.LAUNCHER, it)
+            iconEnabled = it
         }
 
         val selectedCalendar = calendars?.find { it.id == settings.calendarId }
@@ -205,7 +198,6 @@ fun SettingsScreen(onOpenQuickAdd: (prefill: String?) -> Unit) {
         Section(R.string.settings_duration) {
             val hourUnit = stringResource(R.string.unit_hours)
             val minuteUnit = stringResource(R.string.unit_minutes)
-            // чипы, а не сегменты: на крупном шрифте переносятся, а не режут текст
             OptionChips(
                 options = DURATION_OPTIONS.map { it to durationLabel(it, hourUnit, minuteUnit) },
                 selected = settings.defaultDurationMinutes,
@@ -213,8 +205,6 @@ fun SettingsScreen(onOpenQuickAdd: (prefill: String?) -> Unit) {
             )
         }
 
-        // напоминание по умолчанию (29): выкл со старта — база «напоминаний нет,
-        // пока не попросили»; per-event вход — формой «!10» в тексте
         Section(R.string.settings_reminder) {
             val hourUnit = stringResource(R.string.unit_hours)
             val minuteUnit = stringResource(R.string.unit_minutes)
@@ -226,7 +216,6 @@ fun SettingsScreen(onOpenQuickAdd: (prefill: String?) -> Unit) {
                 selected = settings.defaultReminderMinutes,
                 onSelect = { scope.launch { repo.setDefaultReminder(it) } },
             )
-            // discoverability «!10»: сюда приходят за напоминанием одного события
             Text(
                 stringResource(R.string.reminder_hint),
                 Modifier.padding(start = 6.dp, top = 5.dp),
@@ -248,10 +237,7 @@ fun SettingsScreen(onOpenQuickAdd: (prefill: String?) -> Unit) {
             }
         }
 
-        // язык UI: per-app locale, выбор переживает перезапуск (autoStoreLocales);
-        // парсер всегда мультиязычный — переключается только интерфейс
         Section(R.string.settings_language) {
-            // системная локаль может прийти регионом («it-IT») — сравниваем по языку
             val current = AppCompatDelegate.getApplicationLocales().toLanguageTags()
                 .substringBefore(",").substringBefore("-")
             OptionChips(
@@ -262,6 +248,7 @@ fun SettingsScreen(onOpenQuickAdd: (prefill: String?) -> Unit) {
                     "it" to stringResource(R.string.language_italian),
                     "es" to stringResource(R.string.language_spanish),
                     "de" to stringResource(R.string.language_german),
+                    "fr" to stringResource(R.string.language_french),
                 ),
                 selected = current,
                 onSelect = {
@@ -270,16 +257,27 @@ fun SettingsScreen(onOpenQuickAdd: (prefill: String?) -> Unit) {
             )
         }
 
+        val uiLanguage = stringResource(R.string.date_locale)
+        LaunchedEffect(settings.parserLanguages) {
+            if (settings.parserLanguages != null) repo.migrateParserLanguages(uiLanguage)
+        }
+        val (parserOn, parserOff) = settings.parserLanguages?.let { migrateParserLanguages(it, uiLanguage) }
+            ?: (settings.parserOn to settings.parserOff)
         AdvancedSection(
-            manual = settings.parserLanguages,
+            parserOn = parserOn,
+            parserOff = parserOff,
             windowStart = settings.activityStartHour,
             windowEnd = settings.activityEndHour,
-            onSelectLanguages = { scope.launch { repo.setParserLanguages(it) } },
+            insertEnabled = insertEnabled,
+            onToggleLanguage = { code, on -> scope.launch { repo.setParserLanguage(code, on) } },
             onSetWindow = { s, e -> scope.launch { repo.setActivityWindow(s, e) } },
+            onSetInsert = {
+                launchPaths.setEnabled(LaunchPaths.INSERT, it)
+                insertEnabled = it
+            },
         )
 
         AboutFooter()
-        // жестовая навигация: подвал не прижимается к системной полоске
         Spacer(Modifier.navigationBarsPadding())
     }
 
@@ -298,24 +296,20 @@ fun SettingsScreen(onOpenQuickAdd: (prefill: String?) -> Unit) {
     }
 }
 
-/**
- * «Расширенные» (задачи 30/30a): сворачиваемая карточка перед подвалом —
- * языки распознавания и окно активности. Свёрнутость не персистится.
- * [manual] == null — авто-режим {язык UI, en}: чипы показывают действующий
- * набор, первое же касание пишет явный и отключает follow. Окно — часы
- * [windowStart, windowEnd), слайдер пишет в стор по отпусканию ползунка.
- */
 @Composable
 private fun AdvancedSection(
-    manual: Set<String>?,
+    parserOn: Set<String>,
+    parserOff: Set<String>,
     windowStart: Int,
     windowEnd: Int,
-    onSelectLanguages: (Set<String>) -> Unit,
+    insertEnabled: Boolean,
+    onToggleLanguage: (String, Boolean) -> Unit,
     onSetWindow: (Int, Int) -> Unit,
+    onSetInsert: (Boolean) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
     val uiLanguage = stringResource(R.string.date_locale)
-    val enabled = manual ?: parserOrder(uiLanguage, null).toSet()
+    val enabled = parserOrder(uiLanguage, parserOn, parserOff).toSet()
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -329,7 +323,6 @@ private fun AdvancedSection(
                     .fillMaxWidth()
                     .heightIn(min = 48.dp)
                     .clickable(role = Role.Button) { expanded = !expanded }
-                    // TalkBack: состояние секции словами, глиф-шеврон — украшение
                     .semantics {
                         stateDescription = if (expanded) stateExpanded else stateCollapsed
                     }
@@ -359,10 +352,9 @@ private fun AdvancedSection(
                         it to stringResource(languageLabels.getValue(it))
                     },
                     selected = enabled,
-                    // последний включённый язык выключить нельзя
                     onToggle = { lang ->
-                        val next = if (lang in enabled) enabled - lang else enabled + lang
-                        if (next.isNotEmpty()) onSelectLanguages(next)
+                        val on = lang !in enabled
+                        if (on || enabled.size > 1) onToggleLanguage(lang, on)
                     },
                 )
                 Text(
@@ -378,15 +370,11 @@ private fun AdvancedSection(
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                // слайдер живёт в локальном состоянии, в стор — по отпусканию;
-                // без remember-ключей: эмиссия DataStore после записи приносила
-                // бы старое значение под палец при серийной подстройке
                 var range by remember {
                     mutableStateOf(windowStart.toFloat()..windowEnd.toFloat())
                 }
                 val start = range.start.roundToInt()
                 val end = range.endInclusive.roundToInt()
-                // цифры над шкалой: под ней их закрывают пальцы при перетаскивании
                 Row(
                     Modifier.fillMaxWidth().padding(horizontal = 6.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -405,17 +393,15 @@ private fun AdvancedSection(
                     onValueChange = { r ->
                         val s = r.start.roundToInt()
                         val e = r.endInclusive.roundToInt()
-                        if (e - s >= 1) range = s.toFloat()..e.toFloat()  // окно минимум в час
+                        if (e - s >= 1) range = s.toFloat()..e.toFloat()
                     },
                     valueRange = 0f..24f,
                     steps = 23,
                     onValueChangeFinished = { onSetWindow(start, end) },
                     modifier = Modifier
                         .padding(horizontal = 6.dp)
-                        // TalkBack: часы, а не проценты диапазона
                         .semantics { stateDescription = "$start:00 – $end:00" },
                 )
-                // живые примеры — тем же правилом, что ядро (resolveTwelveHour)
                 Text(
                     stringResource(
                         R.string.activity_window_examples,
@@ -431,6 +417,12 @@ private fun AdvancedSection(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+
+                Spacer(Modifier.height(8.dp))
+                SwitchRow(
+                    R.string.launch_insert, insertEnabled,
+                    hintRes = R.string.launch_insert_hint, onCheckedChange = onSetInsert,
+                )
             }
         }
     }
@@ -439,10 +431,9 @@ private fun AdvancedSection(
 private val languageLabels = mapOf(
     "ru" to R.string.language_russian, "en" to R.string.language_english,
     "it" to R.string.language_italian, "es" to R.string.language_spanish,
-    "de" to R.string.language_german,
+    "de" to R.string.language_german, "fr" to R.string.language_french,
 )
 
-/** Мультивыбор чипами — как [OptionChips], но с независимыми переключателями. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun MultiChips(
@@ -465,12 +456,6 @@ private fun MultiChips(
     }
 }
 
-/**
- * Подвал About (задача 21): версия (тап копирует — для баг-репортов), ссылки
- * на зеркало и privacy-факт. Тихо, вне карточек: справочное не спорит с
- * настройками за внимание. Единственный канал связи — Issues (решение
- * владельца); браузер открывает система, само приложение в сеть не ходит.
- */
 @Composable
 private fun AboutFooter() {
     val context = LocalContext.current
@@ -490,7 +475,6 @@ private fun AboutFooter() {
                         "SayWhen ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
                     ),
                 )
-                // подтверждение копирования на 13+ показывает система, раньше — мы
                 if (Build.VERSION.SDK_INT < 33) {
                     Toast.makeText(context, R.string.version_copied, Toast.LENGTH_SHORT).show()
                 }
@@ -505,8 +489,6 @@ private fun AboutFooter() {
             Text(" · ", style = MaterialTheme.typography.bodySmall, color = muted)
             AboutLink(R.string.about_license) { open("$REPO_URL/blob/main/LICENSE") }
         }
-        // строка-факт и одновременно дверь к полным privacy notes в зеркале;
-        // остаётся приглушённой — подвал не растёт на четвёртую ссылку
         Text(
             stringResource(R.string.about_privacy),
             Modifier.clickable(
@@ -529,29 +511,35 @@ private fun AboutLink(labelRes: Int, onClick: () -> Unit) {
     )
 }
 
-/** Строка-переключатель: текст и тумблер — одна цель фокуса (toggleable). */
 @Composable
-private fun SwitchRow(labelRes: Int, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+private fun SwitchRow(
+    labelRes: Int,
+    checked: Boolean,
+    hintRes: Int? = null,
+    onCheckedChange: (Boolean) -> Unit,
+) {
     Row(
         Modifier
             .fillMaxWidth()
-            // ≥48dp: пассивный Switch (onCheckedChange = null) не резервирует
-            // touch-target сам — держит строка, она и есть цель
             .heightIn(min = 48.dp)
             .toggleable(value = checked, role = Role.Switch, onValueChange = onCheckedChange)
-            .padding(horizontal = 6.dp),
+            .padding(horizontal = 6.dp, vertical = if (hintRes == null) 0.dp else 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            stringResource(labelRes),
-            Modifier.weight(1f),
-            style = MaterialTheme.typography.bodyMedium,
-        )
+        Column(Modifier.weight(1f)) {
+            Text(stringResource(labelRes), style = MaterialTheme.typography.bodyMedium)
+            if (hintRes != null) {
+                Text(
+                    stringResource(hintRes),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
         Switch(checked = checked, onCheckedChange = null)
     }
 }
 
-/** Секция настроек: тихая подпись снаружи + группа-карточка (design.md). */
 @Composable
 private fun Section(labelRes: Int, content: @Composable ColumnScope.() -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -571,7 +559,6 @@ private fun Section(labelRes: Int, content: @Composable ColumnScope.() -> Unit) 
     }
 }
 
-/** Чипы-опции с переносом строк: шесть опций в сегмент-ряд не помещаются. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun <T> OptionChips(
@@ -594,11 +581,6 @@ private fun <T> OptionChips(
     }
 }
 
-/**
- * Плитки тем: каждая показывает мини-палитру своей темы (не текущей!) —
- * честное превью; «системная» — обе половины суток. Сетка готова к росту
- * числа тем (перенос строк за счёт weight).
- */
 @Composable
 private fun ThemeTiles(selected: ThemeMode, onSelect: (ThemeMode) -> Unit) {
     val context = LocalContext.current
@@ -655,7 +637,6 @@ private fun ThemeTile(
         ) {
             Box(Modifier.fillMaxSize().padding(0.5.dp), content = { swatch() })
         }
-        // две строки на крупном шрифте — перенос честнее обрезания («Как в систе…»)
         Text(
             stringResource(labelRes),
             style = MaterialTheme.typography.labelMedium,
@@ -686,7 +667,6 @@ private fun calendarLabel(cal: CalendarInfo?): String =
     else if (cal.name == cal.accountName) cal.name
     else "${cal.name} — ${cal.accountName}"
 
-/** Список в шторке: радио + цвет календаря + «имя / аккаунт» двумя этажами. */
 @Composable
 private fun CalendarSheetContent(
     calendars: List<CalendarInfo>?,
@@ -714,7 +694,6 @@ private fun CalendarSheetContent(
                     Modifier.weight(1f),
                     style = MaterialTheme.typography.bodySmall,
                 )
-                // повторный запрос; при «навсегда» рядом — путь через настройки приложения
                 TextButton(onClick = onRequestPermission) {
                     Text(stringResource(R.string.action_grant))
                 }
@@ -758,8 +737,6 @@ private fun CalendarPickRow(
             .selectable(selected = selected, role = Role.RadioButton, onClick = onSelect),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // пассивный: цель фокуса — вся строка, иначе она двоится; без onClick
-        // радио не получает зону 48dp, поэтому отступ от соседей — свой
         RadioButton(selected = selected, onClick = null, modifier = Modifier.padding(end = 8.dp))
         if (color != null) {
             Box(

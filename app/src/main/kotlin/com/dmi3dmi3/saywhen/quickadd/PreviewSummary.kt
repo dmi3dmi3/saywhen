@@ -8,36 +8,25 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-/**
- * Строка-итог живого превью (задача 19b, вместо чипов): всегда описывает
- * полное будущее событие — распознанное обычным цветом, дефолты приглушённым
- * (флаг [SummarySegment.isDefault]). Чистая функция — покрыта JVM-тестами.
- */
 internal data class EventSummary(val icon: SummaryIcon, val segments: List<SummarySegment>)
 
 internal enum class SummaryIcon { CALENDAR, REPEAT }
 
 internal data class SummarySegment(val text: String, val isDefault: Boolean)
 
-/** Строки и форматы — из ресурсов; у каждой локали свои. */
 internal data class SummaryLabels(
     val today: String,
     val tomorrow: String,
     val allDay: String,
     val locale: Locale,
-    val datePattern: String,   // ru «EEE, d MMM» / en «EEE, MMM d»
-    val timePattern: String,   // ru «H:mm» / en «h:mm a»
-    val hourUnit: String,      // «ч» / "h" — для «🔔 за 1 ч 30 мин»
+    val datePattern: String,
+    val timePattern: String,
+    val hourUnit: String,
     val minuteUnit: String,
-    val reminderAtEvent: String,   // «🔔 в начале»
-    val reminderBefore: String,    // шаблон с %s: «🔔 за %s» / "🔔 %s before"
+    val reminderAtEvent: String,
+    val reminderBefore: String,
 )
 
-/**
- * Действующее напоминание (задача 29): текст побеждает дефолт из настроек;
- * all-day — не ставим вовсе (DTSTART — полночь UTC, «за 10 минут» — звонок
- * среди ночи). Единственное место гейта — им пользуются и превью, и запись.
- */
 internal fun effectiveReminder(event: ParsedEvent, defaultMinutes: Int?): Int? =
     if (event.allDay) null else event.reminderMinutes ?: defaultMinutes
 
@@ -57,7 +46,6 @@ internal fun previewSummary(
 
     val segments = mutableListOf<SummarySegment>()
 
-    // дата: диапазон целиком; иначе «сегодня»/«завтра» словами
     val startDate = event.start.toLocalDate()
     val allDayDays = if (event.allDay) event.duration?.toDays() ?: 1 else 1
     val dateText = when {
@@ -70,7 +58,6 @@ internal fun previewSummary(
     }
     segments += SummarySegment(dateText, isDefault = !hasDate && recurrence.isEmpty())
 
-    // время: all-day — дефолт, пока время не названо явно
     if (event.allDay) {
         segments += SummarySegment(labels.allDay, isDefault = !hasTime)
     } else {
@@ -81,9 +68,6 @@ internal fun previewSummary(
         )
     }
 
-    // напоминание — только когда реально будет (из текста или дефолта
-    // настроек); раньше повтора: повтор цитирует слова пользователя и может
-    // быть длинным — под многоточие двух строк должен уходить он, не 🔔
     effectiveReminder(event, defaultReminderMinutes)?.let { minutes ->
         segments += SummarySegment(
             if (minutes == 0) labels.reminderAtEvent
@@ -94,7 +78,6 @@ internal fun previewSummary(
         )
     }
 
-    // повтор — исходными словами пользователя (включая хвосты «до …»/«N раз»)
     if (event.rrule != null && recurrence.isNotEmpty()) {
         segments += SummarySegment(
             recurrence.joinToString(" ") { text.substring(it.range) },

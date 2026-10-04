@@ -1,0 +1,6 @@
+SayWhen now understands French phrases. The interface and the store listing are translated too; thanks to acress1 for starting this and helping with the interface translation.
+
+• French. Write it the way you would say it: "réunion demain à 15h30", "tous les lundis à 9h", "dans 15 jours", "rappelle-moi 10 minutes avant". Recognition turns on with the interface language, or separately in Advanced settings.
+• "+ event" icon. A second icon in the app list opens the input window right away. Turn it on in settings, next to the "Add widget" button. Thanks to Vikranttiw for the idea.
+• In the calendar list. SayWhen can be picked when another app offers to add an event to the calendar. Only the title is taken from the request; you set the time with the phrase. Turn it on in Advanced settings. Thanks to andrummer for the idea.
+• Recognition languages remember your choice: a language you turned on stays on when the interface language changes, one you turned off stays off. The new interface language turns on by itself.

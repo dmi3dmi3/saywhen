@@ -9,7 +9,6 @@ import android.widget.RemoteViews
 import com.dmi3dmi3.saywhen.R
 import com.dmi3dmi3.saywhen.quickadd.QuickAddActivity
 
-/** Кнопка «+» 1×1: тап открывает окно быстрого ввода. */
 class SayWhenWidgetProvider : AppWidgetProvider() {
 
     override fun onUpdate(

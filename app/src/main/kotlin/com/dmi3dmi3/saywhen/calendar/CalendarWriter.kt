@@ -9,18 +9,10 @@ import com.dmi3dmi3.saywhen.parser.ParsedEvent
 import java.time.Duration
 import java.time.ZoneOffset
 
-/** ISO-8601 от java.time — валидный RFC 5545 dur-value («PT1H30M»). */
 internal fun rfc5545Duration(d: Duration): String = d.toString()
 
 class CalendarWriter(private val resolver: ContentResolver) {
 
-    /**
-     * Гочи провайдера (спека, «Запись в календарь»): повтор требует DURATION
-     * и запрещает DTEND; all-day живёт в полуночи UTC; all-day+повтор — P1D.
-     * [reminderMinutes] — уже действующее напоминание (текст > дефолт,
-     * all-day-гейт — [effectiveReminder] на вызывающей стороне).
-     * @return id события или null, если вставка не удалась.
-     */
     fun insert(
         event: ParsedEvent,
         calendarId: Long,
@@ -34,7 +26,6 @@ class CalendarWriter(private val resolver: ContentResolver) {
 
             if (event.allDay) {
                 val utcStart = event.start.toLocalDate().atStartOfDay(ZoneOffset.UTC)
-                // диапазон дат («с 23 по 28 августа») приносит длительность в днях
                 val days = event.duration?.toDays()?.coerceAtLeast(1) ?: 1
                 put(Events.ALL_DAY, 1)
                 put(Events.EVENT_TIMEZONE, "UTC")
@@ -57,7 +48,6 @@ class CalendarWriter(private val resolver: ContentResolver) {
         }
         val uri = resolver.insert(Events.CONTENT_URI, values) ?: return null
         val id = runCatching { ContentUris.parseId(uri) }.getOrNull() ?: return null
-        // напоминание — отдельной строкой; undo-delete события снесёт её каскадом
         reminderMinutes?.let { minutes ->
             resolver.insert(
                 Reminders.CONTENT_URI,
@@ -71,7 +61,6 @@ class CalendarWriter(private val resolver: ContentResolver) {
         return id
     }
 
-    /** Undo: удаление только что созданного события. */
     fun delete(eventId: Long): Boolean =
         resolver.delete(ContentUris.withAppendedId(Events.CONTENT_URI, eventId), null, null) > 0
 }

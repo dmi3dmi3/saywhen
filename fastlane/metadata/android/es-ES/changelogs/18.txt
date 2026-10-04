@@ -1,0 +1,6 @@
+SayWhen ahora entiende frases en francés. La interfaz y la descripción también están traducidas; gracias a acress1 por la iniciativa y la ayuda con la traducción de la interfaz.
+
+• Francés. Escribe como lo dirías: «réunion demain à 15h30», «tous les lundis à 9h», «dans 15 jours», «rappelle-moi 10 minutes avant». El reconocimiento se activa con el idioma de la interfaz o por separado en los ajustes avanzados.
+• Icono «+ evento». Un segundo icono en la lista de aplicaciones abre directamente la ventana de entrada. Se activa en los ajustes, junto al botón «Añadir widget». Gracias a Vikranttiw por la idea.
+• En la lista de calendarios. SayWhen se puede elegir cuando otra aplicación propone añadir un evento al calendario. De la solicitud solo se toma el título; la hora la pones con la frase. Se activa en los ajustes avanzados. Gracias a andrummer por la idea.
+• Los idiomas de reconocimiento recuerdan tu elección: un idioma activado a mano sigue activo al cambiar el idioma de la interfaz, uno desactivado a mano sigue desactivado. El nuevo idioma de la interfaz se activa solo.

@@ -1,0 +1,6 @@
+SayWhen versteht jetzt Sätze auf Französisch. Oberfläche und Store-Beschreibung sind ebenfalls übersetzt; Dank an acress1 für die Initiative und die Hilfe bei der Übersetzung der Oberfläche.
+
+• Französisch. Schreib, wie du es sagen würdest: „réunion demain à 15h30“, „tous les lundis à 9h“, „dans 15 jours“, „rappelle-moi 10 minutes avant“. Die Erkennung schaltet sich mit der Oberflächensprache ein oder separat in den erweiterten Einstellungen.
+• Symbol „+ Termin“. Ein zweites Symbol in der App-Liste öffnet direkt das Eingabefenster. Einschalten in den Einstellungen, neben der Schaltfläche „Widget hinzufügen“. Danke an Vikranttiw für die Idee.
+• In der Kalenderliste. SayWhen lässt sich auswählen, wenn eine andere App einen Termin in den Kalender eintragen will. Aus der Anfrage wird nur der Titel übernommen, die Zeit kommt aus deinem Satz. Einschalten in den erweiterten Einstellungen. Danke an andrummer für die Idee.
+• Erkennungssprachen merken sich deine Wahl: eine von Hand eingeschaltete Sprache bleibt beim Wechsel der Oberflächensprache an, eine von Hand ausgeschaltete bleibt aus. Die neue Oberflächensprache schaltet sich von selbst ein.

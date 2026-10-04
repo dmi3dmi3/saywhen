@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="widget_label">+ évènement</string>
+    <string name="widget_description">Évènement rapide avec texte</string>
+
+    <string name="quickadd_placeholder">Titre de l\'évènement</string>
+    <string name="quickadd_create">Créer</string>
+    <string name="quickadd_created">Créé ✓ %1$s</string>
+    <string name="quickadd_undo">Annuler</string>
+    <string name="error_no_calendar">Pas de calendrier trouvé — compte bien paramétré ?</string>
+    <string name="error_insert_failed">Échec de création</string>
+    <string name="error_no_permission">La permission d\'accès au calendrier est nécessaire pour créer un évènement</string>
+    <string name="error_no_calendar_app">Pas d\'application Calendrier disponible — évènement créé quand même</string>
+
+    <string name="summary_all_day">toute la journée</string>
+    <string name="summary_today">aujourd\'hui</string>
+    <string name="summary_tomorrow">demain</string>
+    <string name="date_locale">fr</string>
+    <string name="summary_date_pattern">EEE d MMM</string>
+    <string name="summary_time_pattern">HH:mm</string>
+    <string name="summary_reminder_at_event">🔔 au début</string>
+    <string name="summary_reminder_before">🔔 %1$s avant</string>
+
+    <string name="hero_slogan">Pas de formulaire, pas de champs. Dis juste quand.</string>
+    <string name="hero_description">Une phrase — et c\'est dans ton calendrier.</string>
+    <string name="example_phrase_1">Sport tous les mardis et vendredis à 9h</string>
+    <string name="example_phrase_2">Cinéma demain à 11h pour 1h30 !10</string>
+    <string name="action_add_widget">Ajouter un widget</string>
+    <string name="action_try">Essayer</string>
+    <string name="launch_icon">Icône « + évènement »</string>
+    <string name="launch_icon_hint">Une deuxième icône dans la liste des applications, elle ouvre directement la fenêtre de saisie. Certains lanceurs ne l\'affichent qu\'après réouverture de la liste.</string>
+    <string name="action_grant">Autoriser</string>
+    <string name="action_app_settings">Paramètres de l\'application</string>
+    <string name="action_add_account">Ajouter un compte</string>
+    <string name="settings_no_calendars">Pas de calendrier trouvé — ajoute un compte de calendrier</string>
+
+    <string name="settings_calendar">Calendrier</string>
+    <string name="settings_calendar_auto">Automatique (principal)</string>
+    <string name="settings_calendar_permission">Autorise l\'accès au calendrier pour en choisir un</string>
+    <string name="settings_duration">Durée</string>
+    <string name="settings_reminder">Rappel</string>
+    <string name="reminder_off">Désactivé</string>
+    <string name="reminder_at_event">Au début</string>
+    <string name="reminder_hint">Pour un seul évènement, mets « !10 » directement dans la phrase.</string>
+    <string name="settings_behavior">À la création</string>
+    <string name="setting_nod">Animation de l\'étiquette</string>
+    <string name="setting_haptic">Vibrer</string>
+    <string name="action_close">fermer</string>
+    <string name="action_open_settings">ouvrir les paramètres</string>
+    <string name="action_open_event">ouvrir dans le calendrier</string>
+
+    <string name="about_source">Code source</string>
+    <string name="about_issues">Signaler un problème</string>
+    <string name="about_license">Licence GPL-3.0</string>
+    <string name="about_privacy">Les évènements vont dans ton calendrier — nulle part ailleurs.</string>
+    <string name="about_privacy_details">détails de confidentialité</string>
+    <string name="about_copy_version">copier la version</string>
+    <string name="settings_theme">Thème</string>
+    <string name="theme_system">Système</string>
+    <string name="theme_light">Clair</string>
+    <string name="theme_dark">Sombre</string>
+    <string name="settings_language">Langue</string>
+    <string name="language_system">Système</string>
+    <string name="settings_advanced">Avancé</string>
+    <string name="parser_languages">Langues reconnues</string>
+    <string name="parser_languages_hint">Par défaut : langue de l\'interface et anglais.</string>
+    <string name="activity_window">Heures actives</string>
+    <string name="activity_window_examples">« à 9h » → %1$d:00 · « à 7h » → %2$d:00</string>
+    <string name="activity_window_hint">Quand une heure est ambiguë, celle qui tombe dans les heures actives l\'emporte : « à 7h » se lit 19:00 si 7h est en dehors.</string>
+    <string name="launch_insert">Dans la liste des calendriers</string>
+    <string name="launch_insert_hint">SayWhen apparaît parmi les calendriers quand une autre application ajoute un évènement. Seul le titre est repris de la demande.</string>
+    <string name="a11y_expanded">déployée</string>
+    <string name="a11y_collapsed">repliée</string>
+    <string name="version_copied">Version copiée</string>
+    <string name="unit_hours">h</string>
+    <string name="unit_minutes">min</string>
+</resources>

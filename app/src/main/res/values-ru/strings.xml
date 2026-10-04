@@ -1,10 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Виджет -->
     <string name="widget_label">+ событие</string>
     <string name="widget_description">Быстрое событие текстом</string>
 
-    <!-- Окно быстрого ввода -->
     <string name="quickadd_placeholder">Название события</string>
     <string name="quickadd_create">Создать</string>
     <string name="quickadd_created">Создано ✓ %1$s</string>
@@ -14,7 +12,6 @@
     <string name="error_no_permission">Без доступа к календарю событие не создать</string>
     <string name="error_no_calendar_app">Открыть нечем: нет календарного приложения — событие сохранено</string>
 
-    <!-- Строка-итог превью; date_locale — локаль форматов дат, у каждой локали своя -->
     <string name="summary_all_day">весь день</string>
     <string name="summary_today">сегодня</string>
     <string name="summary_tomorrow">завтра</string>
@@ -24,19 +21,19 @@
     <string name="summary_reminder_at_event">🔔 в начале</string>
     <string name="summary_reminder_before">🔔 за %1$s</string>
 
-    <!-- Главный экран: hero и действия (задача 18) -->
     <string name="hero_slogan">Без форм и полей. Просто скажи когда.</string>
     <string name="hero_description">Одна фраза — и событие в календаре.</string>
     <string name="example_phrase_1">Спорт каждый вторник и пятницу в 9</string>
     <string name="example_phrase_2">Кино завтра в 11 на полтора часа !10</string>
     <string name="action_add_widget">Добавить виджет</string>
     <string name="action_try">Попробовать</string>
+    <string name="launch_icon">Иконка «+ событие»</string>
+    <string name="launch_icon_hint">Вторая иконка в списке приложений, сразу открывает окно ввода. Некоторые лаунчеры показывают её после повторного открытия списка.</string>
     <string name="action_grant">Разрешить</string>
     <string name="action_app_settings">Настройки приложения</string>
     <string name="action_add_account">Добавить аккаунт</string>
     <string name="settings_no_calendars">Календари не найдены — добавьте календарный аккаунт</string>
 
-    <!-- Настройки -->
     <string name="settings_calendar">Календарь</string>
     <string name="settings_calendar_auto">Автоматически (основной)</string>
     <string name="settings_calendar_permission">Дайте доступ к календарю, чтобы выбрать конкретный</string>
@@ -48,12 +45,10 @@
     <string name="settings_behavior">При создании</string>
     <string name="setting_nod">Кивок ярлычка</string>
     <string name="setting_haptic">Вибрация</string>
-    <!-- onClickLabel для TalkBack: «Дважды коснитесь, чтобы …» -->
     <string name="action_close">закрыть</string>
     <string name="action_open_settings">открыть настройки</string>
     <string name="action_open_event">открыть в календаре</string>
 
-    <!-- подвал About (задача 21) -->
     <string name="about_source">Исходный код</string>
     <string name="about_issues">Сообщить о проблеме</string>
     <string name="about_license">Лицензия GPL-3.0</string>
@@ -72,6 +67,8 @@
     <string name="activity_window">Окно активности</string>
     <string name="activity_window_examples">«в 9» → %1$d:00 · «в 7» → %2$d:00</string>
     <string name="activity_window_hint">Когда время можно понять неоднозначно, побеждает попавшее в окно.</string>
+    <string name="launch_insert">В списке календарей</string>
+    <string name="launch_insert_hint">SayWhen появляется среди календарей, когда другое приложение добавляет событие. Из запроса берётся только заголовок.</string>
     <string name="a11y_expanded">развёрнуто</string>
     <string name="a11y_collapsed">свёрнуто</string>
     <string name="version_copied">Версия скопирована</string>

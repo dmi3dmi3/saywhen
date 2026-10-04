@@ -1,13 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Дефолтная локаль — en (fallback для всех), русский — в values-ru/ (задачи 14 и 17). -->
     <string name="app_name" translatable="false">SayWhen</string>
 
-    <!-- Виджет -->
     <string name="widget_label">+ event</string>
     <string name="widget_description">Quick event from text</string>
 
-    <!-- Окно быстрого ввода -->
     <string name="quickadd_placeholder">Event title</string>
     <string name="quickadd_create">Create</string>
     <string name="quickadd_created">Created ✓ %1$s</string>
@@ -17,7 +14,6 @@
     <string name="error_no_permission">Calendar access is needed to create events</string>
     <string name="error_no_calendar_app">No calendar app to open the event — it\'s saved anyway</string>
 
-    <!-- Строка-итог превью; date_locale и паттерны — у каждой локали свои -->
     <string name="summary_all_day">all day</string>
     <string name="summary_today">today</string>
     <string name="summary_tomorrow">tomorrow</string>
@@ -27,19 +23,19 @@
     <string name="summary_reminder_at_event">🔔 at start</string>
     <string name="summary_reminder_before">🔔 %1$s before</string>
 
-    <!-- Главный экран: hero и действия (задача 18) -->
     <string name="hero_slogan">No forms, no fields. Just say when.</string>
     <string name="hero_description">One phrase — and it\'s on your calendar.</string>
     <string name="example_phrase_1">Gym every tuesday and friday at 9</string>
     <string name="example_phrase_2">Movie tomorrow at 11 for 1.5h !10</string>
     <string name="action_add_widget">Add widget</string>
     <string name="action_try">Try it</string>
+    <string name="launch_icon">\"+ event\" icon</string>
+    <string name="launch_icon_hint">A second icon in the app list that opens the input window right away. Some launchers show it after you reopen the list.</string>
     <string name="action_grant">Allow</string>
     <string name="action_app_settings">App settings</string>
     <string name="action_add_account">Add account</string>
     <string name="settings_no_calendars">No calendars found — add a calendar account</string>
 
-    <!-- Настройки -->
     <string name="settings_calendar">Calendar</string>
     <string name="settings_calendar_auto">Automatic (primary)</string>
     <string name="settings_calendar_permission">Grant calendar access to pick a specific one</string>
@@ -51,12 +47,10 @@
     <string name="settings_behavior">On create</string>
     <string name="setting_nod">Tab nod</string>
     <string name="setting_haptic">Vibrate</string>
-    <!-- onClickLabel для TalkBack: «Double-tap to …» -->
     <string name="action_close">close</string>
     <string name="action_open_settings">open settings</string>
     <string name="action_open_event">open in calendar</string>
 
-    <!-- подвал About (задача 21) -->
     <string name="about_source">Source code</string>
     <string name="about_issues">Report a problem</string>
     <string name="about_license">License GPL-3.0</string>
@@ -74,12 +68,15 @@
     <string name="language_italian" translatable="false">Italiano</string>
     <string name="language_spanish" translatable="false">Español</string>
     <string name="language_german" translatable="false">Deutsch</string>
+    <string name="language_french" translatable="false">Français</string>
     <string name="settings_advanced">Advanced</string>
     <string name="parser_languages">Recognition languages</string>
     <string name="parser_languages_hint">Default: interface language and English.</string>
     <string name="activity_window">Active hours</string>
     <string name="activity_window_examples">“at 9” → %1$d:00 · “at 7” → %2$d:00</string>
     <string name="activity_window_hint">When recognition is ambiguous, times inside the active hours win.</string>
+    <string name="launch_insert">In the calendar list</string>
+    <string name="launch_insert_hint">SayWhen appears among calendars when another app adds an event. Only the title is taken from the request.</string>
     <string name="a11y_expanded">expanded</string>
     <string name="a11y_collapsed">collapsed</string>
     <string name="version_copied">Version copied</string>

@@ -1,11 +1,5 @@
 package com.dmi3dmi3.saywhen.parser
 
-/**
- * Компактная форма напоминания «!N[час-юнит]» (задача 29) — универсальная,
- * реализация одна на все языки: «!10» — за 10 минут, «!0» — при событии,
- * «!1ч»/«!1h»/«!2std» — часы юнитом из словаря длительностей языка.
- * Несколько форм — последняя побеждает, ранние остаются текстом.
- */
 internal object CompactReminder {
 
     private val pattern = Regex("""!(\d{1,3})(\p{L}*)""")
@@ -19,7 +13,7 @@ internal object CompactReminder {
             val minutes = when {
                 unit.isEmpty() -> num.toInt()
                 unit in hourUnits -> num.toInt() * 60
-                else -> continue  // неизвестный юнит («!10x») — не напоминание
+                else -> continue
             }
             found = ReminderCandidate(minutes, i..i)
         }
