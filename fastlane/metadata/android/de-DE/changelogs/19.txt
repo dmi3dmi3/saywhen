@@ -1,0 +1,10 @@
+SayWhen schaltet die Sprachen, in denen du schreibst, jetzt selbst ein und schreibt nicht mehr nur in einen Kalender.
+
+• Alias im Satz: "Mittagessen #arbeit" landet in einem anderen Kalender.
+• Aufgaben in Tasks.org: Seine Listen erscheinen neben den Kalendern.
+• Einstellungen auf einem Bildschirm.
+• Uhrzeit mit Punkt: "16.00" wird als 16:00 gelesen.
+• Verknüpfung "+ Termin" für Launcher.
+• Versteht auf Englisch "tmrw", "tmr" und "tdy".
+
+Details auf der Release-Seite bei GitHub.

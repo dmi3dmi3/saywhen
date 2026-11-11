@@ -35,6 +35,11 @@ internal object EnWords {
         "sun" to DayOfWeek.SUNDAY,
     )
 
+    val relativeDays: Map<String, Long> = mapOf(
+        "today" to 0L, "tdy" to 0L,
+        "tomorrow" to 1L, "tmrw" to 1L, "tmr" to 1L,
+    )
+
     val months: Map<String, Int> = mapOf(
         "january" to 1, "february" to 2, "march" to 3, "april" to 4,
         "may" to 5, "june" to 6, "july" to 7, "august" to 8,

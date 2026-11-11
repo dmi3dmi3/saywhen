@@ -12,8 +12,8 @@ android {
         applicationId = "com.dmi3dmi3.saywhen"
         minSdk = 26
         targetSdk = 36
-        versionCode = 18
-        versionName = "3.1.0"
+        versionCode = 19
+        versionName = "3.2.0"
     }
 
     val uploadStore = providers.gradleProperty("SAYWHEN_STORE_FILE").orNull

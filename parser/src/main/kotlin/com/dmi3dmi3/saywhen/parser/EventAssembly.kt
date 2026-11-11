@@ -19,6 +19,7 @@ internal object EventAssembly {
         defaultTitle: String,
         now: ZonedDateTime,
         activityWindow: IntRange,
+        target: TargetMatch? = null,
     ): ParsedEvent {
         val used = BooleanArray(tokens.size) { blocked[it] }
         val claims = mutableListOf<Claim>()
@@ -26,6 +27,11 @@ internal object EventAssembly {
         fun take(range: IntRange, field: TokenMatch.Field) {
             for (j in range) used[j] = true
             claims += Claim(range, field)
+        }
+
+        target?.let { t ->
+            val idx = tokens.indices.filter { tokens[it].range.first <= t.range.last && t.range.first <= tokens[it].range.last }
+            if (idx.isNotEmpty()) take(idx.first()..idx.last(), TokenMatch.Field.TARGET)
         }
 
         val rec = extraction.recurrence
@@ -95,6 +101,7 @@ internal object EventAssembly {
             matches = claims
                 .map { TokenMatch(charSpan(tokens, it.tokens), it.field) }
                 .sortedBy { it.range.first },
+            target = target?.alias,
         )
     }
 

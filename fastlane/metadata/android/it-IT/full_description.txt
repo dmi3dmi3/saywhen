@@ -6,12 +6,12 @@ Scrivi l'evento come lo diresti, in italiano, inglese, russo, spagnolo, tedesco 
 • Cinema domani alle 11 per un'ora e mezza !10
 • Dentista il 3 giugno alle 12:30
 
-SayWhen analizza la frase mentre scrivi: data, ora, durata, ricorrenza, un promemoria «!10». Mostra un'anteprima dal vivo di ciò che ha capito e scrive l'evento direttamente nel calendario che hai scelto. Tocca il widget, scrivi, fatto.
+SayWhen analizza la frase mentre scrivi: data, ora, durata, ricorrenza, un promemoria "!10". Mostra un'anteprima dal vivo di ciò che ha capito e scrive l'evento direttamente nel calendario che hai scelto. Un alias nella frase, come #lavoro, manda un evento in un altro calendario. Gli alias vengono dai nomi dei calendari e scrivendo # compaiono i suggerimenti. Con l'integrazione Tasks.org attiva, una frase può creare un'attività in una lista di Tasks.org invece di un evento: le liste compaiono accanto ai calendari. Tocca il widget, scrivi, fatto.
 
 Privato per costruzione:
 
 • Nessuna registrazione, nessun server, niente analytics, niente identificatori
-• Nessun accesso alla rete — l'app non dichiara nemmeno il permesso INTERNET
-• Due permessi in totale: leggere l'elenco dei calendari e scrivere l'evento richiesto
+• Nessun accesso alla rete: l'app non dichiara nemmeno il permesso INTERNET
+• Due permessi per il calendario: leggere l'elenco dei calendari e scrivere l'evento richiesto. Altri due per Tasks.org, solo se attivi l'integrazione
 
 Gli eventi vanno solo nel tuo calendario e da nessun'altra parte. Se il calendario appartiene a un account sincronizzato, è il suo sync a caricare l'evento, esattamente come con qualsiasi altra app calendario.

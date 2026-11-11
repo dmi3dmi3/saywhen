@@ -49,6 +49,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -86,6 +87,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.core.content.ContextCompat
 import com.dmi3dmi3.saywhen.MainActivity
 import com.dmi3dmi3.saywhen.R
@@ -99,11 +102,26 @@ import com.dmi3dmi3.saywhen.settings.Settings
 import com.dmi3dmi3.saywhen.settings.SettingsRepository
 import com.dmi3dmi3.saywhen.settings.migrateParserLanguages
 import com.dmi3dmi3.saywhen.settings.parserOrder
+import com.dmi3dmi3.saywhen.settings.readLanguageSignals
+import com.dmi3dmi3.saywhen.calendar.pickDefaultCalendar
+import com.dmi3dmi3.saywhen.settings.TargetSuggestions
+import com.dmi3dmi3.saywhen.settings.calendarKey
+import com.dmi3dmi3.saywhen.settings.effectiveAliases
+import com.dmi3dmi3.saywhen.settings.targetSuggestions
+import com.dmi3dmi3.saywhen.target.TargetRef
+import com.dmi3dmi3.saywhen.target.parseTargetKey
+import com.dmi3dmi3.saywhen.target.targetsOf
+import com.dmi3dmi3.saywhen.target.writesTask
+import com.dmi3dmi3.saywhen.tasks.TaskListInfo
+import com.dmi3dmi3.saywhen.tasks.TasksRepository
 import java.time.Duration
 import java.time.ZonedDateTime
 import java.util.Locale
 import kotlin.math.roundToInt
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private val EDGE_INSET = 10.dp
 
@@ -133,11 +151,15 @@ internal fun ErrorActionButton(action: ErrorAction) {
 
 internal enum class ErrorAction { APP_SETTINGS, ADD_ACCOUNT }
 
+private class NoCalendar : RuntimeException()
+private class TaskListGone : RuntimeException()
+
 internal data class Created(
     val id: Long,
     val title: String,
     val sourceText: String,
     val blocked: List<IntRange>,
+    val target: TargetRef,
 )
 
 @Composable
@@ -151,13 +173,35 @@ fun QuickAddScreen(onClose: () -> Unit, prefill: String? = null) {
     }
     val (parserOn, parserOff) = settings.parserLanguages?.let { migrateParserLanguages(it, uiLanguage) }
         ?: (settings.parserOn to settings.parserOff)
+    val signals = remember { readLanguageSignals(context) }
+    val calendars = remember {
+        val granted = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.READ_CALENDAR,
+        ) == PackageManager.PERMISSION_GRANTED
+        if (granted) CalendarRepository(context.contentResolver).writableCalendars() else emptyList()
+    }
+    val tasksRepo = remember { TasksRepository(context) }
+    var taskLists by remember { mutableStateOf<List<TaskListInfo>?>(null) }
+    LaunchedEffect(settings.tasksEnabled) {
+        taskLists = if (settings.tasksEnabled && tasksRepo.hasPermissions()) {
+            withContext(Dispatchers.IO) { runCatching { tasksRepo.writableLists() }.getOrNull() }
+        } else {
+            null
+        }
+    }
+    val targets = remember(calendars, taskLists, settings.tasksEnabled) {
+        targetsOf(calendars, taskLists, settings.tasksEnabled)
+    }
+    val aliases = remember(targets, settings.targetAliases) { effectiveAliases(targets, settings.targetAliases) }
     val parser = remember(
-        parserOn, parserOff, uiLanguage,
-        settings.activityStartHour, settings.activityEndHour,
+        parserOn, parserOff, uiLanguage, signals, aliases,
+        settings.activityStartHour, settings.activityEndHour, settings.dotTime,
     ) {
         MultilingualEventParser(
-            parserOrder(uiLanguage, parserOn, parserOff),
+            parserOrder(uiLanguage, parserOn, parserOff, signals.system, signals.keyboard),
             settings.activityStartHour until settings.activityEndHour,
+            targets = aliases.values.toSet(),
+            dotTime = settings.dotTime,
         )
     }
     val defaultDuration = Duration.ofMinutes(settings.defaultDurationMinutes.toLong())
@@ -169,30 +213,68 @@ fun QuickAddScreen(onClose: () -> Unit, prefill: String? = null) {
     var created by remember { mutableStateOf<Created?>(null) }
     var autoClose by remember { mutableStateOf(false) }
     val parsed = remember(value.text, blocked, parser) { parser.parse(value.text, ZonedDateTime.now(), blocked) }
+    fun targetKey(event: ParsedEvent): String? =
+        chosenTargetKey(event.target, aliases, settings.defaultTarget)
+            ?: pickDefaultCalendar(calendars)?.let { calendarKey(it.id) }
+    val summaryTarget = remember(parsed.target, targets, aliases, settings.defaultTarget) {
+        chosenTargetKey(parsed.target, aliases, settings.defaultTarget)
+            ?.let { key -> targets.firstOrNull { it.key == key } }
+            ?.let { info -> SummaryTarget(aliases.getValue(info.key), info.color, isTaskList = parseTargetKey(info.key).writesTask) }
+    }
+    val suggestions = remember(value, aliases) { targetSuggestions(value.text, value.selection.end, aliases.values) }
+    val aliasColors = remember(targets, aliases) { targets.associate { aliases.getValue(it.key) to it.color } }
+
+    val scope = rememberCoroutineScope()
+
+    fun write(event: ParsedEvent, ref: TargetRef?, reminder: Int?): Pair<TargetRef, Long>? = when (ref) {
+        is TargetRef.TaskList -> {
+            if (taskLists.orEmpty().none { it.id == ref.id }) throw TaskListGone()
+            tasksRepo.insert(event, ref.id, settings.tasksNoDueDate, reminder)?.let { ref to it }
+        }
+        TargetRef.Tasks -> {
+            if (!tasksRepo.isInstalled()) throw TaskListGone()
+            tasksRepo.insert(event, null, settings.tasksNoDueDate, reminder)?.let { ref to it }
+        }
+        else -> {
+            val repo = CalendarRepository(context.contentResolver)
+            val calendar = (ref as? TargetRef.Calendar)
+                ?.let { c -> repo.writableCalendars().firstOrNull { it.id == c.id } }
+                ?: repo.defaultCalendar()
+                ?: throw NoCalendar()
+            CalendarWriter(context.contentResolver)
+                .insert(event, calendar.id, defaultDuration, reminderMinutes = reminder)
+                ?.also { requestCalendarSync(calendar) }
+                ?.let { TargetRef.Calendar(calendar.id) to it }
+        }
+    }
 
     fun create() {
-        val repo = CalendarRepository(context.contentResolver)
-        val calendar = settings.calendarId
-            ?.let { id -> repo.writableCalendars().firstOrNull { it.id == id } }
-            ?: repo.defaultCalendar()
-        if (calendar == null) {
-            error = context.getString(R.string.error_no_calendar) to ErrorAction.ADD_ACCOUNT
-            return
-        }
         val event = parser.parse(value.text, ZonedDateTime.now(), blocked)
-        val id = CalendarWriter(context.contentResolver).insert(
-            event, calendar.id, defaultDuration,
-            reminderMinutes = effectiveReminder(event, settings.defaultReminderMinutes),
-        )
-        if (id == null) {
-            error = context.getString(R.string.error_insert_failed) to null
-        } else {
-            requestCalendarSync(calendar)
-            created = Created(id, event.title, value.text, blocked)
-            value = TextFieldValue("")
-            blocked = emptyList()
-            error = null
-            autoClose = true
+        val reminder = effectiveReminder(event, settings.defaultReminderMinutes)
+        val ref = targetKey(event)?.let(::parseTargetKey)
+        scope.launch {
+            val outcome = runCatching { withContext(Dispatchers.IO) { write(event, ref, reminder) } }
+            val done = outcome.getOrNull()
+            val failure = outcome.exceptionOrNull()
+            when {
+                done != null -> {
+                    created = Created(done.second, event.title, value.text, blocked, done.first)
+                    value = TextFieldValue("")
+                    blocked = emptyList()
+                    error = null
+                    autoClose = true
+                }
+                failure is NoCalendar ->
+                    error = context.getString(R.string.error_no_calendar) to ErrorAction.ADD_ACCOUNT
+                failure is TaskListGone ->
+                    error = context.getString(R.string.error_no_tasks_app) to null
+                failure is SecurityException ->
+                    error = context.getString(R.string.error_tasks_access) to ErrorAction.APP_SETTINGS
+                ref.writesTask ->
+                    error = context.getString(R.string.error_tasks_insert) to null
+                else ->
+                    error = context.getString(R.string.error_insert_failed) to null
+            }
         }
     }
 
@@ -276,25 +358,48 @@ fun QuickAddScreen(onClose: () -> Unit, prefill: String? = null) {
             nodEnabled = settings.nodEnabled,
             error = error,
             created = created,
+            target = summaryTarget,
+            tasksNoDueDate = settings.tasksNoDueDate,
+            suggestions = suggestions,
+            aliasColors = aliasColors,
+            onSuggestion = { alias ->
+                suggestions?.let { s ->
+                    val before = value.text.substring(0, s.range.first)
+                    val after = value.text.substring(s.range.last + 1)
+                    val inserted = "#$alias "
+                    value = TextFieldValue(before + inserted + after, TextRange(before.length + inserted.length))
+                }
+            },
             onCreate = ::createWithPermissions,
             onOpenCreated = {
                 created?.let { done ->
+                    val isTask = done.target.writesTask
                     try {
                         context.startActivity(
-                            Intent(Intent.ACTION_VIEW).setDataAndType(
-                                ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, done.id),
-                                "vnd.android.cursor.item/event",
-                            ),
+                            if (isTask) {
+                                tasksRepo.viewIntent(done.id)
+                            } else {
+                                Intent(Intent.ACTION_VIEW).setDataAndType(
+                                    ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, done.id),
+                                    "vnd.android.cursor.item/event",
+                                )
+                            },
                         )
                         onClose()
                     } catch (_: ActivityNotFoundException) {
-                        error = context.getString(R.string.error_no_calendar_app) to null
+                        error = context.getString(
+                            if (isTask) R.string.error_no_tasks_app else R.string.error_no_calendar_app,
+                        ) to null
                     }
                 }
             },
             onUndo = {
                 created?.let { done ->
-                    CalendarWriter(context.contentResolver).delete(done.id)
+                    if (done.target.writesTask) {
+                        scope.launch { withContext(Dispatchers.IO) { runCatching { tasksRepo.delete(done.id) } } }
+                    } else {
+                        CalendarWriter(context.contentResolver).delete(done.id)
+                    }
                     value = TextFieldValue(done.sourceText, TextRange(done.sourceText.length))
                     blocked = done.blocked
                     created = null
@@ -315,6 +420,11 @@ private fun InputConstruction(
     nodEnabled: Boolean,
     error: Pair<String, ErrorAction?>?,
     created: Created?,
+    target: SummaryTarget?,
+    tasksNoDueDate: Boolean,
+    suggestions: TargetSuggestions?,
+    aliasColors: Map<String, Int?>,
+    onSuggestion: (String) -> Unit,
     onCreate: () -> Unit,
     onOpenCreated: () -> Unit,
     onUndo: () -> Unit,
@@ -357,6 +467,11 @@ private fun InputConstruction(
             defaultReminderMinutes = defaultReminderMinutes,
             error = error,
             created = created,
+            target = target,
+            tasksNoDueDate = tasksNoDueDate,
+            suggestions = suggestions,
+            aliasColors = aliasColors,
+            onSuggestion = onSuggestion,
             createEnabled = value.text.isNotBlank(),
             onCreate = onCreate,
             onOpenCreated = onOpenCreated,
@@ -503,6 +618,11 @@ private fun Tray(
     defaultReminderMinutes: Int?,
     error: Pair<String, ErrorAction?>?,
     created: Created?,
+    target: SummaryTarget?,
+    tasksNoDueDate: Boolean,
+    suggestions: TargetSuggestions?,
+    aliasColors: Map<String, Int?>,
+    onSuggestion: (String) -> Unit,
     createEnabled: Boolean,
     onCreate: () -> Unit,
     onOpenCreated: () -> Unit,
@@ -530,7 +650,7 @@ private fun Tray(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 Box(Modifier.weight(1f).heightIn(min = 40.dp), contentAlignment = Alignment.CenterStart) {
-                    if (created != null) {
+                    if (created != null && text.isBlank()) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 stringResource(R.string.quickadd_created, created.title),
@@ -551,12 +671,44 @@ private fun Tray(
                                 Text(stringResource(R.string.quickadd_undo))
                             }
                         }
+                    } else if (suggestions != null) {
+                        TargetSuggestionsRow(suggestions.options, aliasColors, onSuggestion)
                     } else {
-                        SummaryLine(parsed, text, defaultDuration, defaultReminderMinutes)
+                        SummaryLine(parsed, text, defaultDuration, defaultReminderMinutes, target, tasksNoDueDate)
                     }
                 }
                 Button(onClick = onCreate, enabled = createEnabled) {
                     Text(stringResource(R.string.quickadd_create))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TargetSuggestionsRow(
+    options: List<String>,
+    colors: Map<String, Int?>,
+    onPick: (String) -> Unit,
+) {
+    Row(
+        Modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        for (alias in options) {
+            Surface(
+                onClick = { onPick(alias) },
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+            ) {
+                Row(
+                    Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    colors[alias]?.let { c ->
+                        Text("● ", color = Color(c or 0xFF000000.toInt()), style = MaterialTheme.typography.bodySmall)
+                    }
+                    Text("#$alias", style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
@@ -569,6 +721,8 @@ private fun SummaryLine(
     text: String,
     defaultDuration: Duration,
     defaultReminderMinutes: Int?,
+    target: SummaryTarget?,
+    tasksNoDueDate: Boolean,
 ) {
     val labels = SummaryLabels(
         today = stringResource(R.string.summary_today),
@@ -581,11 +735,12 @@ private fun SummaryLine(
         minuteUnit = stringResource(R.string.unit_minutes),
         reminderAtEvent = stringResource(R.string.summary_reminder_at_event),
         reminderBefore = stringResource(R.string.summary_reminder_before),
+        noDueDate = stringResource(R.string.summary_no_due_date),
     )
-    val summary = remember(parsed, text, defaultDuration, defaultReminderMinutes, labels) {
+    val summary = remember(parsed, text, defaultDuration, defaultReminderMinutes, labels, target, tasksNoDueDate) {
         previewSummary(
             parsed, text, defaultDuration, defaultReminderMinutes, labels,
-            ZonedDateTime.now().toLocalDate(),
+            ZonedDateTime.now().toLocalDate(), target, tasksNoDueDate,
         )
     }
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
@@ -605,13 +760,14 @@ private fun SummaryLine(
         Text(
             buildAnnotatedString {
                 summary.segments.forEachIndexed { i, seg ->
-                    if (i > 0) {
-                        pushStyle(SpanStyle(color = muted))
-                        append(" · ")
+                    if (i > 0) append('\u2003')
+                    seg.dotColor?.let { dot ->
+                        pushStyle(SpanStyle(color = Color(dot or 0xFF000000.toInt())))
+                        append("●\u00A0")
                         pop()
                     }
-                    pushStyle(SpanStyle(color = if (seg.isDefault) muted else normal))
-                    append(seg.text)
+                    pushStyle(SpanStyle(color = if (seg.isAssumed) muted else normal))
+                    append(seg.text.replace(' ', '\u00A0'))
                     pop()
                 }
             },

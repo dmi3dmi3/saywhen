@@ -6,12 +6,12 @@ Type an event the way you'd say it, in English, Russian, Italian, Spanish, Germa
 • Movie tomorrow at 11 for 1.5h !10
 • Dentist june 3 at 12:30
 
-SayWhen parses the phrase as you type: date, time, duration, recurrence, a “!10” reminder. It shows a live preview of what it understood and writes the event straight to the calendar you chose. Tap the home-screen widget, type, done.
+SayWhen parses the phrase as you type: date, time, duration, recurrence, a "!10" reminder. It shows a live preview of what it understood and writes the event straight to the calendar you chose. An alias in the phrase, like #work, sends one event to another calendar. Aliases come from your calendar names, and typing # brings up suggestions. With the Tasks.org integration turned on, a phrase can create a task in a Tasks.org list instead of an event: the lists appear next to your calendars. Tap the home-screen widget, type, done.
 
 Private by construction:
 
 • No sign-up, no server, no analytics, no identifiers
-• No network access at all — the app doesn't even declare the INTERNET permission
-• Two permissions total: read your calendar list, write the event you asked for
+• No network access at all: the app doesn't even declare the INTERNET permission
+• Two calendar permissions: read your calendar list, write the event you asked for. Two more for Tasks.org, asked only if you turn that integration on
 
 Events go to your calendar and nowhere else. If your calendar belongs to a synced account, its own sync engine uploads the event, exactly as with any other calendar app.

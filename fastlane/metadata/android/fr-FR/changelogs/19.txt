@@ -1,0 +1,10 @@
+SayWhen active de lui-même les langues dans lesquelles tu écris et n'écrit plus dans un seul calendrier.
+
+• Alias dans la phrase : "déjeuner #travail" part dans un autre calendrier.
+• Tâches dans Tasks.org : ses listes apparaissent à côté des calendriers.
+• Les paramètres sur un seul écran.
+• Heure avec un point : "16.00" se lit 16:00.
+• Raccourci "+ évènement" pour les lanceurs.
+• En anglais, il comprend "tmrw", "tmr" et "tdy".
+
+Détails sur la page de la version sur GitHub.

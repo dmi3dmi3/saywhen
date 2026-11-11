@@ -15,6 +15,7 @@
     <string name="error_no_calendar_app">No calendar app to open the event — it\'s saved anyway</string>
 
     <string name="summary_all_day">all day</string>
+    <string name="summary_no_due_date">no due date</string>
     <string name="summary_today">today</string>
     <string name="summary_tomorrow">tomorrow</string>
     <string name="date_locale">en</string>
@@ -24,25 +25,35 @@
     <string name="summary_reminder_before">🔔 %1$s before</string>
 
     <string name="hero_slogan">No forms, no fields. Just say when.</string>
-    <string name="hero_description">One phrase — and it\'s on your calendar.</string>
     <string name="example_phrase_1">Gym every tuesday and friday at 9</string>
     <string name="example_phrase_2">Movie tomorrow at 11 for 1.5h !10</string>
-    <string name="action_add_widget">Add widget</string>
+    <string name="example_phrase_3">Dentist on wednesday at 3pm #%1$s</string>
     <string name="action_try">Try it</string>
     <string name="launch_icon">\"+ event\" icon</string>
-    <string name="launch_icon_hint">A second icon in the app list that opens the input window right away. Some launchers show it after you reopen the list.</string>
+    <string name="launch_icon_hint">A second icon in the app list that opens the input window right away. If it doesn\'t show up, close the app list and open it again.</string>
     <string name="action_grant">Allow</string>
     <string name="action_app_settings">App settings</string>
     <string name="action_add_account">Add account</string>
     <string name="settings_no_calendars">No calendars found — add a calendar account</string>
 
-    <string name="settings_calendar">Calendar</string>
-    <string name="settings_calendar_auto">Automatic (primary)</string>
+    <string name="settings_calendar_auto">Automatic</string>
     <string name="settings_calendar_permission">Grant calendar access to pick a specific one</string>
+    <string name="target_hint">Phrases go to the default calendar. To send one elsewhere, put that calendar\'s alias in the text: \"lunch #work\".</string>
+    <string name="target_alias_duplicate">This alias is already taken.</string>
+    <string name="tasks_toggle">Tasks.org</string>
+    <string name="tasks_toggle_hint">Create tasks with a phrase: Tasks.org lists appear next to calendars, and an #alias sends the phrase there.</string>
+    <string name="tasks_not_installed">Tasks.org is not installed.</string>
+    <string name="tasks_no_access">Tasks.org access was denied.</string>
+    <string name="tasks_no_due_date">Tasks without a due date</string>
+    <string name="tasks_no_due_date_hint">A phrase without a date makes a task with no due date instead of today.</string>
+    <string name="error_tasks_access">No access to Tasks.org</string>
+    <string name="error_tasks_insert">Tasks.org did not accept the task</string>
+    <string name="error_no_tasks_app">Tasks.org is not available</string>
     <string name="settings_duration">Duration</string>
     <string name="settings_reminder">Reminder</string>
-    <string name="reminder_off">Off</string>
-    <string name="reminder_at_event">At start</string>
+    <string name="reminder_off">No reminder</string>
+    <string name="reminder_at_event">At event start</string>
+    <string name="reminder_before">%1$s before</string>
     <string name="reminder_hint">For a single event, put \"!10\" right in the phrase.</string>
     <string name="settings_behavior">On create</string>
     <string name="setting_nod">Tab nod</string>
@@ -61,7 +72,6 @@
     <string name="theme_system">System</string>
     <string name="theme_light">Light</string>
     <string name="theme_dark">Dark</string>
-    <string name="settings_language">Language</string>
     <string name="language_system">System</string>
     <string name="language_russian" translatable="false">Русский</string>
     <string name="language_english" translatable="false">English</string>
@@ -69,16 +79,36 @@
     <string name="language_spanish" translatable="false">Español</string>
     <string name="language_german" translatable="false">Deutsch</string>
     <string name="language_french" translatable="false">Français</string>
-    <string name="settings_advanced">Advanced</string>
-    <string name="parser_languages">Recognition languages</string>
-    <string name="parser_languages_hint">Default: interface language and English.</string>
     <string name="activity_window">Active hours</string>
-    <string name="activity_window_examples">“at 9” → %1$d:00 · “at 7” → %2$d:00</string>
+    <string name="activity_window_examples">\"at 9\" → %1$d:00 · \"at 7\" → %2$d:00</string>
     <string name="activity_window_hint">When recognition is ambiguous, times inside the active hours win.</string>
-    <string name="launch_insert">In the calendar list</string>
-    <string name="launch_insert_hint">SayWhen appears among calendars when another app adds an event. Only the title is taken from the request.</string>
-    <string name="a11y_expanded">expanded</string>
-    <string name="a11y_collapsed">collapsed</string>
+    <string name="dot_time">Time with a dot</string>
+    <string name="dot_time_hint">\"16.00\" is read as 16:00.</string>
+    <string name="launch_insert">Create events via SayWhen</string>
+    <string name="launch_insert_hint">When another app offers to add an event, SayWhen appears among the options. Only the title is taken from the request.</string>
+    <string name="settings_doors">How to open</string>
+    <string name="settings_target">Where it goes</string>
+    <string name="settings_languages">Phrase languages</string>
+    <string name="settings_unsaid">If not said</string>
+    <string name="settings_time">How time is read</string>
+    <string name="settings_looks">Look and feedback</string>
+    <string name="settings_ui_language">Interface language</string>
+    <string name="a11y_back">Back</string>
+    <string name="door_widget">Widget</string>
+    <string name="door_widget_hint">A tile on the home screen that opens the input window.</string>
+    <string name="action_add">Add</string>
+    <string name="doors_widget_short">widget</string>
+    <string name="doors_icon_short">icon</string>
+    <string name="doors_insert_short">other apps</string>
+    <string name="doors_none">Not set up</string>
+    <string name="tasks_root_hint">Default list in Tasks.org</string>
+    <string name="summary_reminder_off">no reminder</string>
+    <string name="language_reason_always">On by default</string>
+    <string name="language_reason_system">System language</string>
+    <string name="language_reason_keyboard">Keyboard</string>
+    <string name="language_reason_manual_on">Turned on by you</string>
+    <string name="language_reason_manual_off">Turned off by you</string>
+    <string name="language_reason_only">The only language</string>
     <string name="version_copied">Version copied</string>
     <string name="unit_hours">h</string>
     <string name="unit_minutes">min</string>

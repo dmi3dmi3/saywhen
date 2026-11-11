@@ -10,53 +10,27 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AppCompatDelegate
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.RangeSlider
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -64,40 +38,34 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import androidx.core.os.LocaleListCompat
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.dmi3dmi3.saywhen.BuildConfig
 import com.dmi3dmi3.saywhen.R
 import com.dmi3dmi3.saywhen.calendar.CalendarInfo
 import com.dmi3dmi3.saywhen.calendar.CalendarRepository
-import com.dmi3dmi3.saywhen.parser.MultilingualEventParser
-import com.dmi3dmi3.saywhen.parser.resolveTwelveHour
-import kotlin.math.roundToInt
-import com.dmi3dmi3.saywhen.quickadd.ErrorAction
-import com.dmi3dmi3.saywhen.quickadd.ErrorActionButton
+import com.dmi3dmi3.saywhen.calendar.pickDefaultCalendar
+import com.dmi3dmi3.saywhen.target.targetsOf
+import com.dmi3dmi3.saywhen.tasks.TaskListInfo
+import com.dmi3dmi3.saywhen.tasks.TasksRepository
 import com.dmi3dmi3.saywhen.widget.SayWhenWidgetProvider
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-
-private val DURATION_OPTIONS = listOf(30, 60, 90, 120)
-
-private val REMINDER_OPTIONS = listOf(5, 10, 30, 60)
+import kotlinx.coroutines.withContext
 
 private const val REPO_URL = "https://github.com/dmi3dmi3/saywhen"
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+internal enum class SettingsPage { DOORS, TARGET, LANGUAGES, UNSAID, TIME, LOOKS }
+
 @Composable
 fun SettingsScreen(onOpenQuickAdd: (prefill: String?) -> Unit) {
     val context = LocalContext.current
@@ -106,15 +74,26 @@ fun SettingsScreen(onOpenQuickAdd: (prefill: String?) -> Unit) {
     val scope = rememberCoroutineScope()
 
     var calendars by remember { mutableStateOf<List<CalendarInfo>?>(null) }
-    var showCalendarSheet by remember { mutableStateOf(false) }
-
     fun loadCalendars() {
         calendars = CalendarRepository(context.contentResolver).writableCalendars()
     }
-
     val permission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted -> if (granted) loadCalendars() }
+
+    val tasksRepo = remember { TasksRepository(context) }
+    var taskLists by remember { mutableStateOf<List<TaskListInfo>?>(null) }
+    var tasksStatus by remember { mutableStateOf<TasksStatus?>(null) }
+    val tasksPermissions = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) { grants ->
+        if (grants.values.all { it }) {
+            tasksStatus = null
+            scope.launch { repo.setTasksEnabled(true) }
+        } else {
+            tasksStatus = TasksStatus.NO_ACCESS
+        }
+    }
 
     LaunchedEffect(Unit) {
         val granted = ContextCompat.checkSelfPermission(
@@ -123,8 +102,169 @@ fun SettingsScreen(onOpenQuickAdd: (prefill: String?) -> Unit) {
         if (granted) loadCalendars() else permission.launch(Manifest.permission.READ_CALENDAR)
     }
 
+    var page by rememberSaveable { mutableStateOf<SettingsPage?>(null) }
+    BackHandler(enabled = page != null) { page = null }
+
     val settings = settingsOrNull ?: return
 
+    LaunchedEffect(settings.tasksEnabled) {
+        val usable = settings.tasksEnabled && tasksRepo.hasPermissions()
+        if (settings.tasksEnabled) tasksStatus = if (usable) null else TasksStatus.NO_ACCESS
+        taskLists = if (usable) {
+            withContext(Dispatchers.IO) { runCatching { tasksRepo.writableLists() }.getOrNull() }
+        } else {
+            null
+        }
+    }
+
+    fun setTasks(on: Boolean) {
+        when {
+            !on -> {
+                tasksStatus = null
+                scope.launch { repo.setTasksEnabled(false) }
+            }
+            !tasksRepo.isInstalled() -> tasksStatus = TasksStatus.NOT_INSTALLED
+            tasksRepo.hasPermissions() -> {
+                tasksStatus = null
+                scope.launch { repo.setTasksEnabled(true) }
+            }
+            else -> tasksPermissions.launch(TasksRepository.PERMISSIONS)
+        }
+    }
+
+    val launchPaths = remember { LaunchPaths(context) }
+    val widgetManager = remember { context.getSystemService(AppWidgetManager::class.java) }
+    var resumes by remember { mutableStateOf(0) }
+    LifecycleResumeEffect(Unit) {
+        resumes++
+        onPauseOrDispose { }
+    }
+    var iconEnabled by remember(page, resumes) { mutableStateOf(launchPaths.isEnabled(LaunchPaths.LAUNCHER)) }
+    var insertEnabled by remember(page, resumes) { mutableStateOf(launchPaths.isEnabled(LaunchPaths.INSERT)) }
+    val widgetPinned = remember(page, resumes) {
+        widgetManager?.getAppWidgetIds(ComponentName(context, SayWhenWidgetProvider::class.java))?.isNotEmpty() == true
+    }
+
+    val targets = targetsOf(calendars, taskLists, settings.tasksEnabled)
+    val selectedTarget = targets.find { it.key == settings.defaultTarget }
+    val exampleAlias = remember(targets, calendars, settings.defaultTarget, settings.targetAliases) {
+        val key = selectedTarget?.key
+            ?: calendars?.let { pickDefaultCalendar(it) }?.let { calendarKey(it.id) }
+        key?.let { effectiveAliases(targets, settings.targetAliases)[it] }
+    }
+
+    val uiLanguage = stringResource(R.string.date_locale)
+    LaunchedEffect(settings.parserLanguages) {
+        if (settings.parserLanguages != null) repo.migrateParserLanguages(uiLanguage)
+    }
+    val (parserOn, parserOff) = settings.parserLanguages?.let { migrateParserLanguages(it, uiLanguage) }
+        ?: (settings.parserOn to settings.parserOff)
+    val signals = remember { readLanguageSignals(context) }
+    val enabledLanguages = parserOrder(uiLanguage, parserOn, parserOff, signals.system, signals.keyboard)
+    val autoLanguages = autoLanguages(uiLanguage, signals.system, signals.keyboard)
+
+    when (page) {
+        null -> Overview(
+            settings = settings,
+            targetName = selectedTarget?.name,
+            exampleAlias = exampleAlias,
+            enabledLanguages = enabledLanguages,
+            doors = listOfNotNull(
+                stringResource(R.string.doors_widget_short).takeIf { widgetPinned },
+                stringResource(R.string.doors_icon_short).takeIf { iconEnabled },
+                stringResource(R.string.doors_insert_short).takeIf { insertEnabled },
+            ),
+            onOpenQuickAdd = onOpenQuickAdd,
+            onOpen = { page = it },
+        )
+        SettingsPage.DOORS -> PageScaffold(R.string.settings_doors, onBack = { page = null }) {
+            DoorsPage(
+                canPinWidget = widgetManager?.isRequestPinAppWidgetSupported == true,
+                iconEnabled = iconEnabled,
+                insertEnabled = insertEnabled,
+                onPinWidget = {
+                    widgetManager?.requestPinAppWidget(
+                        ComponentName(context, SayWhenWidgetProvider::class.java), null, null,
+                    )
+                },
+                onSetIcon = {
+                    launchPaths.setEnabled(LaunchPaths.LAUNCHER, it)
+                    iconEnabled = it
+                },
+                onSetInsert = {
+                    launchPaths.setEnabled(LaunchPaths.INSERT, it)
+                    insertEnabled = it
+                },
+            )
+        }
+        SettingsPage.TARGET -> PageScaffold(R.string.settings_target, onBack = { page = null }) {
+            TargetPage(
+                calendars = calendars,
+                taskLists = taskLists,
+                tasksEnabled = settings.tasksEnabled,
+                tasksStatus = tasksStatus,
+                tasksNoDueDate = settings.tasksNoDueDate,
+                selectedKey = settings.defaultTarget,
+                manualAliases = settings.targetAliases,
+                onSelect = { key -> scope.launch { repo.setDefaultTarget(key) } },
+                onAlias = { key, alias -> scope.launch { repo.setTargetAlias(key, alias) } },
+                onRequestPermission = { permission.launch(Manifest.permission.READ_CALENDAR) },
+                onSetTasks = ::setTasks,
+                onSetNoDueDate = { scope.launch { repo.setTasksNoDueDate(it) } },
+            )
+        }
+        SettingsPage.LANGUAGES -> PageScaffold(R.string.settings_languages, onBack = { page = null }) {
+            LanguagesPage(
+                enabled = enabledLanguages,
+                uiLanguage = uiLanguage,
+                parserOn = parserOn,
+                parserOff = parserOff,
+                signals = signals,
+                onToggle = { code, on -> scope.launch { repo.setParserLanguage(code, on, autoLanguages) } },
+            )
+        }
+        SettingsPage.UNSAID -> PageScaffold(R.string.settings_unsaid, onBack = { page = null }) {
+            UnsaidPage(
+                durationMinutes = settings.defaultDurationMinutes,
+                reminderMinutes = settings.defaultReminderMinutes,
+                onSetDuration = { scope.launch { repo.setDefaultDuration(it) } },
+                onSetReminder = { scope.launch { repo.setDefaultReminder(it) } },
+            )
+        }
+        SettingsPage.TIME -> PageScaffold(R.string.settings_time, onBack = { page = null }) {
+            TimePage(
+                windowStart = settings.activityStartHour,
+                windowEnd = settings.activityEndHour,
+                dotTime = settings.dotTime,
+                onSetWindow = { s, e -> scope.launch { repo.setActivityWindow(s, e) } },
+                onSetDotTime = { scope.launch { repo.setDotTime(it) } },
+            )
+        }
+        SettingsPage.LOOKS -> PageScaffold(R.string.settings_looks, onBack = { page = null }) {
+            LooksPage(
+                theme = settings.theme,
+                nodEnabled = settings.nodEnabled,
+                hapticEnabled = settings.hapticEnabled,
+                onSetTheme = { scope.launch { repo.setTheme(it) } },
+                onSetNod = { scope.launch { repo.setNodEnabled(it) } },
+                onSetHaptic = { scope.launch { repo.setHapticEnabled(it) } },
+            )
+        }
+    }
+}
+
+@Composable
+private fun Overview(
+    settings: Settings,
+    targetName: String?,
+    exampleAlias: String?,
+    enabledLanguages: List<String>,
+    doors: List<String>,
+    onOpenQuickAdd: (String?) -> Unit,
+    onOpen: (SettingsPage) -> Unit,
+) {
+    val hourUnit = stringResource(R.string.unit_hours)
+    val minuteUnit = stringResource(R.string.unit_minutes)
     Column(
         Modifier.padding(16.dp).verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -134,329 +274,71 @@ fun SettingsScreen(onOpenQuickAdd: (prefill: String?) -> Unit) {
             contentDescription = stringResource(R.string.app_name),
             tint = MaterialTheme.colorScheme.onSurface,
         )
-        Column {
-            Text(stringResource(R.string.hero_slogan), style = MaterialTheme.typography.bodyLarge)
-            Text(
-                stringResource(R.string.hero_description),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        Text(stringResource(R.string.hero_slogan), style = MaterialTheme.typography.bodyLarge)
 
-        for (example in listOf(R.string.example_phrase_1, R.string.example_phrase_2)) {
-            val text = stringResource(example)
+        val examples = listOfNotNull(
+            stringResource(R.string.example_phrase_1).let { it to it },
+            stringResource(R.string.example_phrase_2).let { it to it },
+            exampleAlias?.let {
+                stringResource(R.string.example_phrase_3, shortAlias(it)) to stringResource(R.string.example_phrase_3, it)
+            },
+        )
+        for ((shown, prefill) in examples) {
             Surface(
-                onClick = { onOpenQuickAdd(text) },
+                onClick = { onOpenQuickAdd(prefill) },
                 shape = RoundedCornerShape(12.dp),
                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("«$text»", Modifier.padding(horizontal = 12.dp, vertical = 10.dp))
+                Text("\"$shown\"", Modifier.padding(horizontal = 12.dp, vertical = 10.dp))
             }
         }
-
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            val widgetManager = remember { context.getSystemService(AppWidgetManager::class.java) }
-            if (widgetManager?.isRequestPinAppWidgetSupported == true) {
-                Button(onClick = {
-                    widgetManager.requestPinAppWidget(
-                        ComponentName(context, SayWhenWidgetProvider::class.java), null, null,
-                    )
-                }) { Text(stringResource(R.string.action_add_widget)) }
-            }
-            OutlinedButton(onClick = { onOpenQuickAdd(null) }) {
-                Text(stringResource(R.string.action_try))
-            }
-        }
-        val launchPaths = remember { LaunchPaths(context) }
-        var iconEnabled by remember { mutableStateOf(launchPaths.isEnabled(LaunchPaths.LAUNCHER)) }
-        var insertEnabled by remember { mutableStateOf(launchPaths.isEnabled(LaunchPaths.INSERT)) }
-        SwitchRow(R.string.launch_icon, iconEnabled, hintRes = R.string.launch_icon_hint) {
-            launchPaths.setEnabled(LaunchPaths.LAUNCHER, it)
-            iconEnabled = it
+        OutlinedButton(onClick = { onOpenQuickAdd(null) }) {
+            Text(stringResource(R.string.action_try))
         }
 
-        val selectedCalendar = calendars?.find { it.id == settings.calendarId }
-        Section(R.string.settings_calendar) {
-            Row(
-                Modifier.fillMaxWidth()
-                    .clickable { showCalendarSheet = true }
-                    .padding(horizontal = 6.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                CalendarDot(selectedCalendar)
-                Text(
-                    calendarLabel(selectedCalendar),
-                    Modifier.weight(1f),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                Text("›", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+        val reminder = when (val m = settings.defaultReminderMinutes) {
+            null -> stringResource(R.string.summary_reminder_off)
+            0 -> stringResource(R.string.summary_reminder_at_event)
+            else -> stringResource(R.string.summary_reminder_before, durationLabel(m, hourUnit, minuteUnit))
         }
-
-        Section(R.string.settings_duration) {
-            val hourUnit = stringResource(R.string.unit_hours)
-            val minuteUnit = stringResource(R.string.unit_minutes)
-            OptionChips(
-                options = DURATION_OPTIONS.map { it to durationLabel(it, hourUnit, minuteUnit) },
-                selected = settings.defaultDurationMinutes,
-                onSelect = { scope.launch { repo.setDefaultDuration(it) } },
-            )
-        }
-
-        Section(R.string.settings_reminder) {
-            val hourUnit = stringResource(R.string.unit_hours)
-            val minuteUnit = stringResource(R.string.unit_minutes)
-            OptionChips(
-                options = listOf<Pair<Int?, String>>(
-                    null to stringResource(R.string.reminder_off),
-                    0 to stringResource(R.string.reminder_at_event),
-                ) + REMINDER_OPTIONS.map { it to durationLabel(it, hourUnit, minuteUnit) },
-                selected = settings.defaultReminderMinutes,
-                onSelect = { scope.launch { repo.setDefaultReminder(it) } },
-            )
-            Text(
-                stringResource(R.string.reminder_hint),
-                Modifier.padding(start = 6.dp, top = 5.dp),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-
-        Section(R.string.settings_theme) {
-            ThemeTiles(selected = settings.theme) { scope.launch { repo.setTheme(it) } }
-        }
-
-        Section(R.string.settings_behavior) {
-            SwitchRow(R.string.setting_nod, settings.nodEnabled) {
-                scope.launch { repo.setNodEnabled(it) }
-            }
-            SwitchRow(R.string.setting_haptic, settings.hapticEnabled) {
-                scope.launch { repo.setHapticEnabled(it) }
-            }
-        }
-
-        Section(R.string.settings_language) {
-            val current = AppCompatDelegate.getApplicationLocales().toLanguageTags()
-                .substringBefore(",").substringBefore("-")
-            OptionChips(
-                options = listOf(
-                    "" to stringResource(R.string.language_system),
-                    "ru" to stringResource(R.string.language_russian),
-                    "en" to stringResource(R.string.language_english),
-                    "it" to stringResource(R.string.language_italian),
-                    "es" to stringResource(R.string.language_spanish),
-                    "de" to stringResource(R.string.language_german),
-                    "fr" to stringResource(R.string.language_french),
-                ),
-                selected = current,
-                onSelect = {
-                    AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(it))
-                },
-            )
-        }
-
         val uiLanguage = stringResource(R.string.date_locale)
-        LaunchedEffect(settings.parserLanguages) {
-            if (settings.parserLanguages != null) repo.migrateParserLanguages(uiLanguage)
+        GroupCard {
+            ValueRow(
+                R.string.settings_looks,
+                summaryOf(
+                    stringResource(themeLabel(settings.theme)),
+                    stringResource(languageLabels.getValue(uiLanguage)),
+                ),
+            ) { onOpen(SettingsPage.LOOKS) }
+            RowDivider()
+            ValueRow(R.string.settings_doors, listSummary(doors, stringResource(R.string.doors_none))) { onOpen(SettingsPage.DOORS) }
+            RowDivider()
+            ValueRow(R.string.settings_target, targetName ?: stringResource(R.string.settings_calendar_auto)) { onOpen(SettingsPage.TARGET) }
+            RowDivider()
+            ValueRow(
+                R.string.settings_languages,
+                languagesSummary(enabledLanguages.map { stringResource(languageLabels.getValue(it)) }),
+            ) { onOpen(SettingsPage.LANGUAGES) }
+            RowDivider()
+            ValueRow(
+                R.string.settings_unsaid,
+                summaryOf(durationLabel(settings.defaultDurationMinutes, hourUnit, minuteUnit), reminder),
+            ) { onOpen(SettingsPage.UNSAID) }
+            RowDivider()
+            ValueRow(
+                R.string.settings_time,
+                timeSummary(settings.activityStartHour, settings.activityEndHour, settings.dotTime),
+            ) { onOpen(SettingsPage.TIME) }
         }
-        val (parserOn, parserOff) = settings.parserLanguages?.let { migrateParserLanguages(it, uiLanguage) }
-            ?: (settings.parserOn to settings.parserOff)
-        AdvancedSection(
-            parserOn = parserOn,
-            parserOff = parserOff,
-            windowStart = settings.activityStartHour,
-            windowEnd = settings.activityEndHour,
-            insertEnabled = insertEnabled,
-            onToggleLanguage = { code, on -> scope.launch { repo.setParserLanguage(code, on) } },
-            onSetWindow = { s, e -> scope.launch { repo.setActivityWindow(s, e) } },
-            onSetInsert = {
-                launchPaths.setEnabled(LaunchPaths.INSERT, it)
-                insertEnabled = it
-            },
-        )
 
         AboutFooter()
         Spacer(Modifier.navigationBarsPadding())
     }
-
-    if (showCalendarSheet) {
-        ModalBottomSheet(onDismissRequest = { showCalendarSheet = false }) {
-            CalendarSheetContent(
-                calendars = calendars,
-                selectedId = settings.calendarId,
-                onSelect = { id ->
-                    scope.launch { repo.setCalendarId(id) }
-                    showCalendarSheet = false
-                },
-                onRequestPermission = { permission.launch(Manifest.permission.READ_CALENDAR) },
-            )
-        }
-    }
 }
 
 @Composable
-private fun AdvancedSection(
-    parserOn: Set<String>,
-    parserOff: Set<String>,
-    windowStart: Int,
-    windowEnd: Int,
-    insertEnabled: Boolean,
-    onToggleLanguage: (String, Boolean) -> Unit,
-    onSetWindow: (Int, Int) -> Unit,
-    onSetInsert: (Boolean) -> Unit,
-) {
-    var expanded by remember { mutableStateOf(false) }
-    val uiLanguage = stringResource(R.string.date_locale)
-    val enabled = parserOrder(uiLanguage, parserOn, parserOff).toSet()
-    Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(Modifier.padding(10.dp)) {
-            val stateExpanded = stringResource(R.string.a11y_expanded)
-            val stateCollapsed = stringResource(R.string.a11y_collapsed)
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 48.dp)
-                    .clickable(role = Role.Button) { expanded = !expanded }
-                    .semantics {
-                        stateDescription = if (expanded) stateExpanded else stateCollapsed
-                    }
-                    .padding(horizontal = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    stringResource(R.string.settings_advanced),
-                    Modifier.weight(1f),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                Text(
-                    if (expanded) "⌃" else "⌄",
-                    Modifier.clearAndSetSemantics {},
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            if (expanded) {
-                Text(
-                    stringResource(R.string.parser_languages),
-                    Modifier.padding(start = 6.dp, top = 4.dp, bottom = 5.dp),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                MultiChips(
-                    options = MultilingualEventParser.LANGUAGES.map {
-                        it to stringResource(languageLabels.getValue(it))
-                    },
-                    selected = enabled,
-                    onToggle = { lang ->
-                        val on = lang !in enabled
-                        if (on || enabled.size > 1) onToggleLanguage(lang, on)
-                    },
-                )
-                Text(
-                    stringResource(R.string.parser_languages_hint),
-                    Modifier.padding(start = 6.dp, top = 7.dp),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-
-                Text(
-                    stringResource(R.string.activity_window),
-                    Modifier.padding(start = 6.dp, top = 12.dp),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                var range by remember {
-                    mutableStateOf(windowStart.toFloat()..windowEnd.toFloat())
-                }
-                val start = range.start.roundToInt()
-                val end = range.endInclusive.roundToInt()
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 6.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text(
-                        "$start:00", style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        "$end:00", style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                RangeSlider(
-                    value = range,
-                    onValueChange = { r ->
-                        val s = r.start.roundToInt()
-                        val e = r.endInclusive.roundToInt()
-                        if (e - s >= 1) range = s.toFloat()..e.toFloat()
-                    },
-                    valueRange = 0f..24f,
-                    steps = 23,
-                    onValueChangeFinished = { onSetWindow(start, end) },
-                    modifier = Modifier
-                        .padding(horizontal = 6.dp)
-                        .semantics { stateDescription = "$start:00 – $end:00" },
-                )
-                Text(
-                    stringResource(
-                        R.string.activity_window_examples,
-                        resolveTwelveHour(9, start until end),
-                        resolveTwelveHour(7, start until end),
-                    ),
-                    Modifier.padding(start = 6.dp, top = 4.dp),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                Text(
-                    stringResource(R.string.activity_window_hint),
-                    Modifier.padding(start = 6.dp, top = 4.dp),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-
-                Spacer(Modifier.height(8.dp))
-                SwitchRow(
-                    R.string.launch_insert, insertEnabled,
-                    hintRes = R.string.launch_insert_hint, onCheckedChange = onSetInsert,
-                )
-            }
-        }
-    }
-}
-
-private val languageLabels = mapOf(
-    "ru" to R.string.language_russian, "en" to R.string.language_english,
-    "it" to R.string.language_italian, "es" to R.string.language_spanish,
-    "de" to R.string.language_german, "fr" to R.string.language_french,
-)
-
 @OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun MultiChips(
-    options: List<Pair<String, String>>,
-    selected: Set<String>,
-    onToggle: (String) -> Unit,
-) {
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        options.forEach { (value, label) ->
-            FilterChip(
-                selected = value in selected,
-                onClick = { onToggle(value) },
-                label = { Text(label, maxLines = 1) },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = MaterialTheme.colorScheme.primary,
-                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                ),
-            )
-        }
-    }
-}
-
-@Composable
 private fun AboutFooter() {
     val context = LocalContext.current
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
@@ -482,11 +364,15 @@ private fun AboutFooter() {
             style = MaterialTheme.typography.bodySmall,
             color = muted,
         )
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            AboutLink(R.string.about_source) { open(REPO_URL) }
-            Text(" · ", style = MaterialTheme.typography.bodySmall, color = muted)
-            AboutLink(R.string.about_issues) { open("$REPO_URL/issues") }
-            Text(" · ", style = MaterialTheme.typography.bodySmall, color = muted)
+        FlowRow(horizontalArrangement = Arrangement.Center) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                AboutLink(R.string.about_source) { open(REPO_URL) }
+                Text(" · ", style = MaterialTheme.typography.bodySmall, color = muted)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                AboutLink(R.string.about_issues) { open("$REPO_URL/issues") }
+                Text(" · ", style = MaterialTheme.typography.bodySmall, color = muted)
+            }
             AboutLink(R.string.about_license) { open("$REPO_URL/blob/main/LICENSE") }
         }
         Text(
@@ -509,250 +395,4 @@ private fun AboutLink(labelRes: Int, onClick: () -> Unit) {
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.primary,
     )
-}
-
-@Composable
-private fun SwitchRow(
-    labelRes: Int,
-    checked: Boolean,
-    hintRes: Int? = null,
-    onCheckedChange: (Boolean) -> Unit,
-) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .heightIn(min = 48.dp)
-            .toggleable(value = checked, role = Role.Switch, onValueChange = onCheckedChange)
-            .padding(horizontal = 6.dp, vertical = if (hintRes == null) 0.dp else 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text(stringResource(labelRes), style = MaterialTheme.typography.bodyMedium)
-            if (hintRes != null) {
-                Text(
-                    stringResource(hintRes),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-        Switch(checked = checked, onCheckedChange = null)
-    }
-}
-
-@Composable
-private fun Section(labelRes: Int, content: @Composable ColumnScope.() -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-        Text(
-            stringResource(labelRes),
-            Modifier.padding(start = 6.dp),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Column(Modifier.padding(10.dp), content = content)
-        }
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun <T> OptionChips(
-    options: List<Pair<T, String>>,
-    selected: T,
-    onSelect: (T) -> Unit,
-) {
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        options.forEach { (value, label) ->
-            FilterChip(
-                selected = selected == value,
-                onClick = { onSelect(value) },
-                label = { Text(label, maxLines = 1) },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = MaterialTheme.colorScheme.primary,
-                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                ),
-            )
-        }
-    }
-}
-
-@Composable
-private fun ThemeTiles(selected: ThemeMode, onSelect: (ThemeMode) -> Unit) {
-    val context = LocalContext.current
-    val light = remember {
-        if (Build.VERSION.SDK_INT >= 31) dynamicLightColorScheme(context) else lightColorScheme()
-    }
-    val dark = remember {
-        if (Build.VERSION.SDK_INT >= 31) dynamicDarkColorScheme(context) else darkColorScheme()
-    }
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        ThemeTile(R.string.theme_system, selected == ThemeMode.SYSTEM, Modifier.weight(1f),
-            onClick = { onSelect(ThemeMode.SYSTEM) }) {
-            Row(Modifier.fillMaxSize()) {
-                Box(Modifier.weight(1f).fillMaxHeight().background(light.surface))
-                Box(Modifier.weight(1f).fillMaxHeight().background(dark.surface))
-            }
-        }
-        ThemeTile(R.string.theme_light, selected == ThemeMode.LIGHT, Modifier.weight(1f),
-            onClick = { onSelect(ThemeMode.LIGHT) }) {
-            Box(Modifier.fillMaxSize().background(light.surface))
-            AccentDot(light.primary)
-        }
-        ThemeTile(R.string.theme_dark, selected == ThemeMode.DARK, Modifier.weight(1f),
-            onClick = { onSelect(ThemeMode.DARK) }) {
-            Box(Modifier.fillMaxSize().background(dark.surface))
-            AccentDot(dark.primary)
-        }
-    }
-}
-
-@Composable
-private fun ThemeTile(
-    labelRes: Int,
-    selected: Boolean,
-    modifier: Modifier,
-    onClick: () -> Unit,
-    swatch: @Composable BoxScope.() -> Unit,
-) {
-    val shape = RoundedCornerShape(12.dp)
-    val border =
-        if (selected) 2.dp to MaterialTheme.colorScheme.primary
-        else 1.dp to MaterialTheme.colorScheme.outlineVariant
-    Column(
-        modifier
-            .border(border.first, border.second, shape)
-            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
-            .padding(7.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(5.dp),
-    ) {
-        Box(
-            Modifier.fillMaxWidth().height(30.dp)
-                .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp)),
-        ) {
-            Box(Modifier.fillMaxSize().padding(0.5.dp), content = { swatch() })
-        }
-        Text(
-            stringResource(labelRes),
-            style = MaterialTheme.typography.labelMedium,
-            maxLines = 2,
-            textAlign = TextAlign.Center,
-        )
-    }
-}
-
-@Composable
-private fun BoxScope.AccentDot(color: Color) {
-    Box(
-        Modifier.align(Alignment.BottomStart).padding(5.dp).size(10.dp)
-            .background(color, CircleShape),
-    )
-}
-
-@Composable
-private fun CalendarDot(cal: CalendarInfo?) {
-    val color = if (cal != null && cal.color != 0) Color(cal.color or 0xFF000000.toInt())
-                else MaterialTheme.colorScheme.primary
-    Box(Modifier.size(10.dp).background(color, CircleShape))
-}
-
-@Composable
-private fun calendarLabel(cal: CalendarInfo?): String =
-    if (cal == null) stringResource(R.string.settings_calendar_auto)
-    else if (cal.name == cal.accountName) cal.name
-    else "${cal.name} — ${cal.accountName}"
-
-@Composable
-private fun CalendarSheetContent(
-    calendars: List<CalendarInfo>?,
-    selectedId: Long?,
-    onSelect: (Long?) -> Unit,
-    onRequestPermission: () -> Unit,
-) {
-    Column(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 24.dp)) {
-        Text(
-            stringResource(R.string.settings_calendar),
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(bottom = 4.dp),
-        )
-        CalendarPickRow(
-            name = stringResource(R.string.settings_calendar_auto),
-            account = null,
-            color = null,
-            selected = selectedId == null,
-            onSelect = { onSelect(null) },
-        )
-        when (val list = calendars) {
-            null -> Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    stringResource(R.string.settings_calendar_permission),
-                    Modifier.weight(1f),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                TextButton(onClick = onRequestPermission) {
-                    Text(stringResource(R.string.action_grant))
-                }
-                ErrorActionButton(ErrorAction.APP_SETTINGS)
-            }
-            else -> if (list.isEmpty()) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        stringResource(R.string.settings_no_calendars),
-                        Modifier.weight(1f),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                    ErrorActionButton(ErrorAction.ADD_ACCOUNT)
-                }
-            } else {
-                for (cal in list) {
-                    CalendarPickRow(
-                        name = cal.name,
-                        account = cal.accountName.takeIf { it != cal.name },
-                        color = cal.color.takeIf { it != 0 },
-                        selected = selectedId == cal.id,
-                        onSelect = { onSelect(cal.id) },
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun CalendarPickRow(
-    name: String,
-    account: String?,
-    color: Int?,
-    selected: Boolean,
-    onSelect: () -> Unit,
-) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .selectable(selected = selected, role = Role.RadioButton, onClick = onSelect),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        RadioButton(selected = selected, onClick = null, modifier = Modifier.padding(end = 8.dp))
-        if (color != null) {
-            Box(
-                Modifier.padding(end = 8.dp).size(10.dp)
-                    .background(Color(color or 0xFF000000.toInt()), CircleShape),
-            )
-        }
-        Column(Modifier.padding(vertical = 6.dp)) {
-            Text(name, style = MaterialTheme.typography.bodyMedium)
-            if (account != null) {
-                Text(
-                    account,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-    }
 }

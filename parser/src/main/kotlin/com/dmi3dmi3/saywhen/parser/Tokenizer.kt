@@ -6,7 +6,7 @@ data class Token(val text: String, val range: IntRange) {
 
 object Tokenizer {
     private val word =
-        Regex("""!\d+\p{L}*|\d+[.,]\d+\p{L}*|\d(?:[\d:]*\d)?(?:[hH]\d*)?\.?\s*-\s*\d(?:[\d:]*\d)?(?:[hH]\d*)?\.?|[\p{L}\d]+(?:[:/-][\p{L}\d]+)*""")
+        Regex("""#[\p{L}\d]+(?:[._:/-][\p{L}\d]+)*|!\d+\p{L}*|\d+[.,]\d+\p{L}*|\d(?:[\d:]*\d)?(?:[hH]\d*)?\.?\s*-\s*\d(?:[\d:]*\d)?(?:[hH]\d*)?\.?|[\p{L}\d]+(?:[:/-][\p{L}\d]+)*""")
 
     fun tokenize(text: String): List<Token> =
         word.findAll(text).map { Token(it.value, it.range) }.toList()

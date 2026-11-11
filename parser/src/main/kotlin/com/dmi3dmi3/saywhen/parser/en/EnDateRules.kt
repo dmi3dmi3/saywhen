@@ -17,7 +17,7 @@ import java.time.ZonedDateTime
 
 internal object EnDateRules : DateRule {
 
-    private val relative = mapOf("today" to 0L, "tomorrow" to 1L)
+    private val relative = EnWords.relativeDays
 
     private val dayHalves = mapOf(
         "morning" to DayHalf.MORNING, "evening" to DayHalf.EVENING,
@@ -39,7 +39,7 @@ internal object EnDateRules : DateRule {
         matchRange(tokens, i, today)?.let { return it }
 
         if (t == "day" && tokens.getOrNull(i + 1)?.lower == "after" &&
-            tokens.getOrNull(i + 2)?.lower == "tomorrow"
+            relative[tokens.getOrNull(i + 2)?.lower] == 1L
         ) {
             return DateCandidate(today.plusDays(2), i..i + 2)
         }

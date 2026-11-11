@@ -4,7 +4,7 @@ import java.time.Duration
 import java.time.ZonedDateTime
 
 data class TokenMatch(val range: IntRange, val field: Field) {
-    enum class Field { DATE, TIME, DURATION, RECURRENCE, REMINDER }
+    enum class Field { DATE, TIME, DURATION, RECURRENCE, REMINDER, TARGET }
 }
 
 data class ParsedEvent(
@@ -15,6 +15,7 @@ data class ParsedEvent(
     val rrule: String?,
     val reminderMinutes: Int? = null,
     val matches: List<TokenMatch>,
+    val target: String? = null,
 )
 
 interface EventParser {

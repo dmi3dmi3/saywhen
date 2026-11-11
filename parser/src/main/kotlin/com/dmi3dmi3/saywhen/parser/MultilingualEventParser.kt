@@ -11,6 +11,8 @@ import java.time.ZonedDateTime
 class MultilingualEventParser internal constructor(
     private val translators: List<Translator>,
     private val activityWindow: IntRange = DEFAULT_ACTIVITY_WINDOW,
+    private val targets: Set<String> = emptySet(),
+    private val dotTime: Boolean = false,
 ) : EventParser {
 
     companion object {
@@ -26,8 +28,10 @@ class MultilingualEventParser internal constructor(
         operator fun invoke(
             languages: List<String>,
             activityWindow: IntRange = DEFAULT_ACTIVITY_WINDOW,
+            targets: Set<String> = emptySet(),
+            dotTime: Boolean = false,
         ): MultilingualEventParser =
-            MultilingualEventParser(languages.distinct().mapNotNull { byCode[it] }, activityWindow)
+            MultilingualEventParser(languages.distinct().mapNotNull { byCode[it] }, activityWindow, targets, dotTime)
     }
 
     constructor() : this(LANGUAGES.map { byCode.getValue(it) })
@@ -37,17 +41,22 @@ class MultilingualEventParser internal constructor(
     }
 
     override fun parse(text: String, now: ZonedDateTime, blockedRanges: List<IntRange>): ParsedEvent {
-        val tokens = Tokenizer.tokenize(text)
+        val tokens = Tokenizer.tokenize(if (dotTime) DotTime.normalize(text) else text)
         val blocked = BooleanArray(tokens.size) { i ->
             blockedRanges.any { it.first <= tokens[i].range.last && tokens[i].range.first <= it.last }
         }
-        val extractions = translators.map { it.extract(tokens, now, blocked) }
+        val target = TargetTag.find(text, targets, blockedRanges)
+        val forRules = if (target == null) blocked else BooleanArray(tokens.size) { i ->
+            blocked[i] || (tokens[i].range.first <= target.range.last && target.range.first <= tokens[i].range.last)
+        }
+        val extractions = translators.map { it.extract(tokens, now, forRules) }
         val merged = Arbitration.merge(extractions)
         val leader = extractions.indices.maxByOrNull { Arbitration.coverage(extractions[it]) } ?: 0
         return EventAssembly.assemble(
             text, tokens, blocked, merged,
             translators.flatMapTo(mutableSetOf()) { it.orphanWords },
             translators[leader].defaultTitle, now, activityWindow,
+            target,
         )
     }
 }

@@ -12,7 +12,21 @@ internal data class EventSummary(val icon: SummaryIcon, val segments: List<Summa
 
 internal enum class SummaryIcon { CALENDAR, REPEAT }
 
-internal data class SummarySegment(val text: String, val isDefault: Boolean)
+internal data class SummarySegment(
+    val text: String,
+    val isAssumed: Boolean,
+    val dotColor: Int? = null,
+)
+
+internal data class SummaryTarget(
+    val alias: String,
+    val color: Int?,
+    val isTaskList: Boolean = false,
+)
+
+internal fun chosenTargetKey(tag: String?, aliases: Map<String, String>, defaultTarget: String?): String? =
+    tag?.let { alias -> aliases.entries.firstOrNull { it.value == alias }?.key }
+        ?: defaultTarget?.takeIf { it in aliases }
 
 internal data class SummaryLabels(
     val today: String,
@@ -25,6 +39,7 @@ internal data class SummaryLabels(
     val minuteUnit: String,
     val reminderAtEvent: String,
     val reminderBefore: String,
+    val noDueDate: String = "",
 )
 
 internal fun effectiveReminder(event: ParsedEvent, defaultMinutes: Int?): Int? =
@@ -37,6 +52,8 @@ internal fun previewSummary(
     defaultReminderMinutes: Int?,
     labels: SummaryLabels,
     today: LocalDate,
+    target: SummaryTarget? = null,
+    tasksNoDueDate: Boolean = false,
 ): EventSummary {
     val dateFmt = DateTimeFormatter.ofPattern(labels.datePattern, labels.locale)
     val timeFmt = DateTimeFormatter.ofPattern(labels.timePattern, labels.locale)
@@ -45,6 +62,13 @@ internal fun previewSummary(
     val recurrence = event.matches.filter { it.field == TokenMatch.Field.RECURRENCE }
 
     val segments = mutableListOf<SummarySegment>()
+
+    val taskList = target?.isTaskList == true
+    if (taskList && tasksNoDueDate && event.allDay && !hasDate && recurrence.isEmpty()) {
+        segments += SummarySegment(labels.noDueDate, isAssumed = true)
+        target.let { segments += SummarySegment("#${it.alias}", isAssumed = false, dotColor = it.color) }
+        return EventSummary(SummaryIcon.CALENDAR, segments)
+    }
 
     val startDate = event.start.toLocalDate()
     val allDayDays = if (event.allDay) event.duration?.toDays() ?: 1 else 1
@@ -56,15 +80,17 @@ internal fun previewSummary(
         startDate == today.plusDays(1) -> labels.tomorrow
         else -> event.start.format(dateFmt)
     }
-    segments += SummarySegment(dateText, isDefault = !hasDate && recurrence.isEmpty())
+    segments += SummarySegment(dateText, isAssumed = !hasDate && recurrence.isEmpty())
 
     if (event.allDay) {
-        segments += SummarySegment(labels.allDay, isDefault = !hasTime)
+        segments += SummarySegment(labels.allDay, isAssumed = !hasTime)
+    } else if (taskList) {
+        segments += SummarySegment(event.start.format(timeFmt), isAssumed = false)
     } else {
         val end = event.start.plus(event.duration ?: defaultDuration)
         segments += SummarySegment(
             "${event.start.format(timeFmt)}–${end.format(timeFmt)}",
-            isDefault = false,
+            isAssumed = false,
         )
     }
 
@@ -74,15 +100,19 @@ internal fun previewSummary(
             else labels.reminderBefore.format(
                 durationLabel(minutes, labels.hourUnit, labels.minuteUnit),
             ),
-            isDefault = event.reminderMinutes == null,
+            isAssumed = false,
         )
     }
 
     if (event.rrule != null && recurrence.isNotEmpty()) {
         segments += SummarySegment(
             recurrence.joinToString(" ") { text.substring(it.range) },
-            isDefault = false,
+            isAssumed = false,
         )
+    }
+
+    target?.let {
+        segments += SummarySegment("#${it.alias}", isAssumed = false, dotColor = it.color)
     }
 
     return EventSummary(

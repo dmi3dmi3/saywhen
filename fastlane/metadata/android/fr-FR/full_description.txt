@@ -6,12 +6,12 @@ Pas de formulaire, pas de champs. Dis juste quand.
 • Cinéma demain à 11h pour 1h30 !10
 • Dentiste le 3 juin à 12h30
 
-SayWhen analyse la phrase pendant que tu l'écris : date, heure, durée, répétition, un rappel « !10 ». Il affiche en direct ce qu'il a compris et écrit l'évènement directement dans le calendrier de ton choix. Un tap sur le widget de l'écran d'accueil, une phrase, c'est fait.
+SayWhen analyse la phrase pendant que tu l'écris : date, heure, durée, répétition, un rappel "!10". Il affiche en direct ce qu'il a compris et écrit l'évènement directement dans le calendrier de ton choix. Un alias dans la phrase, comme #travail, envoie un évènement dans un autre calendrier. Les alias viennent des noms de tes calendriers et taper # fait apparaître des suggestions. Avec l'intégration Tasks.org activée, une phrase peut créer une tâche dans une liste Tasks.org au lieu d'un évènement : les listes apparaissent à côté des calendriers. Un tap sur le widget de l'écran d'accueil, une phrase, c'est fait.
 
 Privé par construction :
 
 • Pas d'inscription, pas de serveur, pas d'analytics, pas d'identifiants
-• Aucun accès réseau — l'application ne déclare même pas la permission INTERNET
-• Deux permissions en tout : lire la liste de tes calendriers, écrire l'évènement demandé
+• Aucun accès réseau : l'application ne déclare même pas la permission INTERNET
+• Deux permissions pour le calendrier : lire la liste de tes calendriers, écrire l'évènement demandé. Deux de plus pour Tasks.org, seulement si tu actives l'intégration
 
 Les évènements vont dans ton calendrier et nulle part ailleurs. Si ton calendrier appartient à un compte synchronisé, c'est sa propre synchronisation qui envoie l'évènement, exactement comme avec n'importe quelle autre application de calendrier.

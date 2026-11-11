@@ -1,0 +1,10 @@
+SayWhen ora attiva da solo le lingue in cui scrivi e non scrive più in un solo calendario.
+
+• Alias nella frase: "pranzo #lavoro" manda l'evento in un altro calendario.
+• Attività in Tasks.org: le sue liste compaiono accanto ai calendari.
+• Impostazioni in una sola schermata.
+• Ora con il punto: "16.00" si legge come 16:00.
+• Scorciatoia "+ evento" per i launcher.
+• In inglese capisce "tmrw", "tmr" e "tdy".
+
+I dettagli sono nella pagina della versione su GitHub.

@@ -12,8 +12,12 @@ English, Russian, Italian, Spanish, German, or French:
 > Dentist june 3 at 12:30
 
 SayWhen parses the phrase as you type: date, time, duration, recurrence,
-a “!10” reminder. It shows a live preview of what it understood and writes
-the event straight to the calendar you chose. No sign-up, no server, no
+a "!10" reminder. It shows a live preview of what it understood and writes
+the event straight to the calendar you chose. An alias in the phrase, like
+#work, sends one event to another calendar: aliases come from your calendar
+names, and typing # brings up suggestions. With the Tasks.org integration
+turned on, a phrase can create a task in a Tasks.org list instead of an
+event: the lists appear next to your calendars. No sign-up, no server, no
 network access at all: the app doesn't even declare the `INTERNET` permission.
 
 | Input window | Settings | Widget |
@@ -43,6 +47,9 @@ Check with `apksigner verify --print-certs app-release.apk`.
 
 - `READ_CALENDAR` — list your calendars in settings and pick the target one.
 - `WRITE_CALENDAR` — insert the event you asked for.
+- `org.tasks.permission.READ_TASKS`, `org.tasks.permission.WRITE_TASKS` —
+  list your Tasks.org lists and create the task you asked for. Asked only
+  when you turn on the Tasks.org integration.
 
 That's the whole list. No analytics, no crash reporting, no identifiers.
 Details in [PRIVACY.md](PRIVACY.md).
@@ -100,9 +107,14 @@ not accepted and pull requests will be closed. Bugs and ideas are welcome in
 > Стоматолог 3 июня в 12:30
 
 SayWhen разбирает фразу прямо при вводе: дату, время, длительность,
-повторяемость, напоминание «!10». Показывает, что понял, и записывает
-событие в выбранный вами календарь. Без регистрации, без сервера и вообще
-без доступа в сеть: приложение даже не объявляет разрешение `INTERNET`.
+повтор, напоминание "!10". Показывает, что понял, и записывает
+событие в выбранный вами календарь. Событие в другой календарь: напишите
+его алиас прямо во фразе, например #работа. Алиасы берутся из имён
+календарей, при наборе # появляются подсказки. С включённой интеграцией
+Tasks.org фраза может создать задачу в списке Tasks.org вместо события:
+списки появляются рядом с календарями. Без регистрации, без сервера и
+вообще без доступа в сеть: приложение даже не объявляет разрешение
+`INTERNET`.
 
 **Установка:** [F-Droid](https://f-droid.org/packages/com.dmi3dmi3.saywhen/)
 или APK на странице [Releases](https://github.com/dmi3dmi3/saywhen/releases)

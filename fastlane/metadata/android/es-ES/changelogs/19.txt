@@ -1,0 +1,10 @@
+SayWhen ahora activa solo los idiomas en los que escribes y ya no escribe en un único calendario.
+
+• Alias en la frase: "comida #trabajo" envía el evento a otro calendario.
+• Tareas en Tasks.org: sus listas aparecen junto a los calendarios.
+• Ajustes en una sola pantalla.
+• Hora con punto: "16.00" se lee como 16:00.
+• Acceso directo "+ evento" para launchers.
+• En inglés entiende "tmrw", "tmr" y "tdy".
+
+Los detalles están en la página de la versión en GitHub.

@@ -1,0 +1,10 @@
+SayWhen now turns on the languages you write in by itself, and it no longer writes to just one calendar.
+
+• An alias in the phrase: "lunch #work" sends the event to another calendar.
+• Tasks in Tasks.org: its lists appear next to your calendars.
+• Settings on one screen.
+• Time with a dot: "16.00" is read as 16:00.
+• "+ event" shortcut for launchers.
+• Understands "tmrw", "tmr" and "tdy" in English.
+
+Details are on the GitHub release page.
